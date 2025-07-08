@@ -1930,11 +1930,38 @@ function handleAdditionalDividendChange(caseNum, personNum) {
     const totalUsed = totalSalary + totalDividend;
     
     if (totalUsed > totalAmount) {
-        // 초과분만큼 본인 급여에서 차감
         const excess = totalUsed - totalAmount;
         const mainSalary = parseNumberFromInput(document.getElementById(`case${caseNum}-salary`).value) || 0;
-        const adjustedMainSalary = Math.max(0, mainSalary - excess);
-        document.getElementById(`case${caseNum}-salary`).value = formatNumberWithCommas(adjustedMainSalary);
+        
+        if (mainSalary >= excess) {
+            // 본인 급여에서 초과분 차감 가능
+            const adjustedMainSalary = mainSalary - excess;
+            document.getElementById(`case${caseNum}-salary`).value = formatNumberWithCommas(adjustedMainSalary);
+        } else {
+            // 본인 급여로 부족하면 급여를 0으로 하고 나머지는 배당에서 비례 차감
+            document.getElementById(`case${caseNum}-salary`).value = formatNumberWithCommas(0);
+            const remainingExcess = excess - mainSalary;
+            
+            // 현재 총 배당에서 나머지 초과분을 비례적으로 차감
+            const reductionRatio = (totalDividend - remainingExcess) / totalDividend;
+            
+            // 본인 배당 조정
+            const newMainDividend = Math.floor(adjustedMainDividend * reductionRatio);
+            document.getElementById(`case${caseNum}-dividend`).value = formatNumberWithCommas(newMainDividend);
+            
+            // 추가 인원들 배당 비례 조정
+            for (let i = 0; i < additionalPersonsCount; i++) {
+                const pNum = i + 1;
+                const additionalDividendElement = document.getElementById(`case${caseNum}-dividend-additional${pNum}`);
+                if (additionalDividendElement) {
+                    const currentDividend = parseNumberFromInput(additionalDividendElement.value) || 0;
+                    const newDividend = Math.floor(currentDividend * reductionRatio);
+                    additionalDividendElement.value = formatNumberWithCommas(newDividend);
+                }
+            }
+            
+            showLimitNotification(`총 처분가능금액(${formatCurrency(totalAmount)})을 초과하여 배당을 비례적으로 조정했습니다.`);
+        }
     }
     
     updateCaseTotal(caseNum);
