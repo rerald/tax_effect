@@ -46,9 +46,6 @@ const DEDUCTIONS = {
     // 연금계좌세액공제
     pensionCredit: 1080000,
     
-    // 자녀세액공제
-    childCredit: 150000,
-    
     // 배당세액공제율
     dividendCreditRate: 0.05  // 5% (2천만원 초과분)
 };
@@ -854,14 +851,11 @@ function calculateTaxEffect() {
                 const personDividendElement = document.getElementById(`case${i}-dividend-additional${personNum}`);
                 
                 if (personSalaryElement && personDividendElement) {
-                    const personSalary = parseNumberFromInput(personSalaryElement.value) || 0;
-                    const personDividend = parseNumberFromInput(personDividendElement.value) || 0;
-                    
-                    if (personSalary > 0 || personDividend > 0) {
-                        additionalPersonsResults.push(
-                            calculateAdditionalPersonCase(personSalary, personDividend)
-                        );
-                    }
+                    const personSalary = parseNumberFromInput(personSalaryElement.value);
+                    const personDividend = parseNumberFromInput(personDividendElement.value);
+                    additionalPersonsResults.push(
+                        calculateAdditionalPersonCase(personSalary, personDividend)
+                    );
                 }
             }
             
@@ -1113,12 +1107,10 @@ function updateDetailedAnalysis(cases) {
             formatCurrency(caseResult.taxCredit);
         document.getElementById(`detail${caseNum}-pension-tax-credit`).textContent = 
             formatCurrency(DEDUCTIONS.pensionCredit);
-        document.getElementById(`detail${caseNum}-child-tax-credit`).textContent = 
-            formatCurrency(DEDUCTIONS.childCredit);
         
-        // 총 세액공제
+        // 총 세액공제 (자녀세액공제 제외)
         const totalCredits = caseResult.dividendCredit + caseResult.earnedIncomeTaxCredit + 
-                            caseResult.taxCredit + DEDUCTIONS.pensionCredit + DEDUCTIONS.childCredit;
+                            caseResult.taxCredit + DEDUCTIONS.pensionCredit;
         document.getElementById(`detail${caseNum}-total-tax-credit`).textContent = 
             formatCurrency(totalCredits);
         
