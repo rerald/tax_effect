@@ -556,19 +556,42 @@ function calculateIncomeTax(taxableIncome) {
  * @param {number} corporateIncome - 법인소득
  * @returns {number} - 법인세액
  */
+/**
+ * 법인세 계산 (2025년 기준)
+ * 
+ * 세율표:
+ * - 2억원 이하: 9%
+ * - 2억원 초과 200억원 이하: 19% (누진공제 2,000만원)
+ * - 200억원 초과 3,000억원 이하: 21% (누진공제 4억 2,000만원)
+ * - 3,000억원 초과: 24% (누진공제 94억 2,000만원)
+ * 
+ * @param {number} corporateIncome - 법인소득금액
+ * @returns {number} - 법인세 금액
+ */
 function calculateCorporateTax(corporateIncome) {
     // 입력값 검증
     if (isNaN(corporateIncome) || corporateIncome <= 0) {
         return 0;
     }
     
-    for (let bracket of TAX_RATES.corporate) {
-        if (corporateIncome > bracket.min && corporateIncome <= bracket.max) {
-            const tax = corporateIncome * bracket.rate - bracket.deduction;
-            return Math.max(tax, 0); // 음수가 되지 않도록 보장
-        }
+    // 누진세율 적용
+    let tax = 0;
+    
+    if (corporateIncome <= 200000000) {
+        // 2억원 이하: 9%
+        tax = corporateIncome * 0.09;
+    } else if (corporateIncome <= 20000000000) {
+        // 2억원 초과 200억원 이하: 19% (누진공제 2,000만원)
+        tax = corporateIncome * 0.19 - 20000000;
+    } else if (corporateIncome <= 300000000000) {
+        // 200억원 초과 3,000억원 이하: 21% (누진공제 4억 2,000만원)
+        tax = corporateIncome * 0.21 - 420000000;
+    } else {
+        // 3,000억원 초과: 24% (누진공제 94억 2,000만원)
+        tax = corporateIncome * 0.24 - 9420000000;
     }
-    return 0;
+    
+    return Math.max(tax, 0); // 음수가 되지 않도록 보장
 }
 
 /**
