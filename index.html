@@ -67,14 +67,29 @@
             <div class="scenario-section">
                 <div class="section-header">
                     <h2>시나리오 설정</h2>
-                    <button class="reset-button" onclick="resetToInitialValues()" title="초기값으로 리셋">
-                        <svg class="reset-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M4 12C4 7.58172 7.58172 4 12 4C16.4183 4 20 7.58172 20 12C20 16.4183 16.4183 20 12 20C9.05801 20 6.51244 18.5447 5.12419 16.3297" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M2 12L5 9L8 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </button>
+                    <div class="section-buttons">
+                        <button class="equity-dividend-button" onclick="setAllDividendsByEquity()" title="지분율 기반 배당 설정">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 2L15.09 8.26L22 9L17 14L18.18 21L12 17.77L5.82 21L7 14L2 9L8.91 8.26L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            지분율 기반 배당 설정
+                        </button>
+                        <button class="reset-button" onclick="resetToInitialValues()" title="초기값으로 리셋">
+                            <svg class="reset-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M4 12C4 7.58172 7.58172 4 12 4C16.4183 4 20 7.58172 20 12C20 16.4183 16.4183 20 12 20C9.05801 20 6.51244 18.5447 5.12419 16.3297" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M2 12L5 9L8 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
-                <p class="scenario-description">총 처분 가능 금액을 기준으로 각 케이스별 급여액과 배당액을 입력하세요. 급여와 배당의 비율을 달리하여 최적의 세금 효과를 비교분석할 수 있습니다.</p>
+                <p class="scenario-description">
+                    <strong>💡 세금 최적화 전략 가이드</strong><br>
+                    총 처분 가능 금액을 기준으로 5가지 전략적 케이스를 제공합니다.<br>
+                    <span style="color: #e74c3c; font-weight: 500;">케이스 1</span>: 급여 중심 (단순하지만 세금 부담 높음)<br>
+                    <span style="color: #f39c12; font-weight: 500;">케이스 2-4</span>: 단계적 배당 활용 (세금 효율성 증가)<br>
+                    <span style="color: #27ae60; font-weight: 500;">케이스 5</span>: 배당 중심 (최대 세금 절약 가능)<br>
+                    <em>추가 인원 설정 시 "지분율 기반 배당 설정" 버튼을 활용하여 보수적 최적화 전략을 적용할 수 있습니다.</em>
+                </p>
                 
                 <div class="scenario-table-container">
                     <table class="scenario-table">
@@ -91,19 +106,79 @@
                         <tbody id="scenario-tbody">
                             <tr>
                                 <td class="row-label">본인급여액 (원)</td>
-                                <td><input type="text" id="case1-salary" placeholder="130,000,000" class="currency-input table-input main-person-input"></td>
-                                <td><input type="text" id="case2-salary" placeholder="110,000,000" class="currency-input table-input main-person-input"></td>
-                                <td><input type="text" id="case3-salary" placeholder="90,000,000" class="currency-input table-input main-person-input"></td>
-                                <td><input type="text" id="case4-salary" placeholder="70,000,000" class="currency-input table-input main-person-input"></td>
-                                <td><input type="text" id="case5-salary" placeholder="60,000,000" class="currency-input table-input main-person-input"></td>
+                                <td>
+                                    <div class="input-with-button">
+                                        <input type="text" id="case1-salary" placeholder="130,000,000" class="currency-input table-input main-person-input">
+                                        <button class="max-button" onclick="fillRemainingAmount(1, 'salary')" title="남은 전액 입력">전액</button>
+                                        <button class="diff-button" onclick="fillDifferenceAmount(1, 'salary')" title="차액 입력">차액</button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="input-with-button">
+                                        <input type="text" id="case2-salary" placeholder="110,000,000" class="currency-input table-input main-person-input">
+                                        <button class="max-button" onclick="fillRemainingAmount(2, 'salary')" title="남은 전액 입력">전액</button>
+                                        <button class="diff-button" onclick="fillDifferenceAmount(2, 'salary')" title="차액 입력">차액</button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="input-with-button">
+                                        <input type="text" id="case3-salary" placeholder="90,000,000" class="currency-input table-input main-person-input">
+                                        <button class="max-button" onclick="fillRemainingAmount(3, 'salary')" title="남은 전액 입력">전액</button>
+                                        <button class="diff-button" onclick="fillDifferenceAmount(3, 'salary')" title="차액 입력">차액</button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="input-with-button">
+                                        <input type="text" id="case4-salary" placeholder="70,000,000" class="currency-input table-input main-person-input">
+                                        <button class="max-button" onclick="fillRemainingAmount(4, 'salary')" title="남은 전액 입력">전액</button>
+                                        <button class="diff-button" onclick="fillDifferenceAmount(4, 'salary')" title="차액 입력">차액</button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="input-with-button">
+                                        <input type="text" id="case5-salary" placeholder="60,000,000" class="currency-input table-input main-person-input">
+                                        <button class="max-button" onclick="fillRemainingAmount(5, 'salary')" title="남은 전액 입력">전액</button>
+                                        <button class="diff-button" onclick="fillDifferenceAmount(5, 'salary')" title="차액 입력">차액</button>
+                                    </div>
+                                </td>
                             </tr>
                             <tr>
                                 <td class="row-label">본인배당액 (원)</td>
-                                <td><input type="text" id="case1-dividend" placeholder="0" class="currency-input table-input main-person-input"></td>
-                                <td><input type="text" id="case2-dividend" placeholder="20,000,000" class="currency-input table-input main-person-input"></td>
-                                <td><input type="text" id="case3-dividend" placeholder="40,000,000" class="currency-input table-input main-person-input"></td>
-                                <td><input type="text" id="case4-dividend" placeholder="60,000,000" class="currency-input table-input main-person-input"></td>
-                                <td><input type="text" id="case5-dividend" placeholder="70,000,000" class="currency-input table-input main-person-input"></td>
+                                <td>
+                                    <div class="input-with-button">
+                                        <input type="text" id="case1-dividend" placeholder="0" class="currency-input table-input main-person-input">
+                                        <button class="max-button" onclick="fillRemainingAmount(1, 'dividend')" title="남은 전액 입력">전액</button>
+                                        <button class="diff-button" onclick="fillDifferenceAmount(1, 'dividend')" title="차액 입력">차액</button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="input-with-button">
+                                        <input type="text" id="case2-dividend" placeholder="20,000,000" class="currency-input table-input main-person-input">
+                                        <button class="max-button" onclick="fillRemainingAmount(2, 'dividend')" title="남은 전액 입력">전액</button>
+                                        <button class="diff-button" onclick="fillDifferenceAmount(2, 'dividend')" title="차액 입력">차액</button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="input-with-button">
+                                        <input type="text" id="case3-dividend" placeholder="40,000,000" class="currency-input table-input main-person-input">
+                                        <button class="max-button" onclick="fillRemainingAmount(3, 'dividend')" title="남은 전액 입력">전액</button>
+                                        <button class="diff-button" onclick="fillDifferenceAmount(3, 'dividend')" title="차액 입력">차액</button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="input-with-button">
+                                        <input type="text" id="case4-dividend" placeholder="60,000,000" class="currency-input table-input main-person-input">
+                                        <button class="max-button" onclick="fillRemainingAmount(4, 'dividend')" title="남은 전액 입력">전액</button>
+                                        <button class="diff-button" onclick="fillDifferenceAmount(4, 'dividend')" title="차액 입력">차액</button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="input-with-button">
+                                        <input type="text" id="case5-dividend" placeholder="70,000,000" class="currency-input table-input main-person-input">
+                                        <button class="max-button" onclick="fillRemainingAmount(5, 'dividend')" title="남은 전액 입력">전액</button>
+                                        <button class="diff-button" onclick="fillDifferenceAmount(5, 'dividend')" title="차액 입력">차액</button>
+                                    </div>
+                                </td>
                             </tr>
                             <!-- 추가 인원 행들이 여기에 동적으로 삽입됩니다 -->
                             <!-- 추가 인원들이 여기에 동적으로 삽입됩니다 -->

@@ -60,7 +60,7 @@ let equityRatios = [100]; // 지분율 배열 [본인, 추가1, 추가2, 추가3
 
 // 페이지 로드 시 초기화 (중복 제거를 위해 아래 이벤트 리스너에서 처리)
 
-// 기본값 설정
+// 기본값 설정 - 더 현실적이고 전략적인 케이스 제공
 function setDefaultValues() {
     // 총처분 가능 금액 기본값 설정
     const totalAmountInput = document.getElementById('total-amount');
@@ -68,31 +68,73 @@ function setDefaultValues() {
         totalAmountInput.value = formatNumberWithCommas(150000000);
     }
     
-    // 각 케이스의 기본값 설정
-    const defaultValues = [
-        { salary: 130000000, dividend: 0 },
-        { salary: 110000000, dividend: 20000000 },
-        { salary: 90000000, dividend: 40000000 },
-        { salary: 70000000, dividend: 60000000 },
-        { salary: 60000000, dividend: 70000000 }
-    ];
-    
     // 총처분 가능 금액에 맞춰 비율 조정
     const totalAmount = getTotalAmount();
     
-    for (let i = 0; i < defaultValues.length; i++) {
+    // 더 현실적인 케이스 설정
+    const strategicCases = [
+        { 
+            name: "급여 중심",
+            salary: 0.87,     // 87%를 급여로 
+            dividend: 0.13    // 13%를 배당으로 (최소 배당 활용)
+        },
+        { 
+            name: "혼합 1",
+            salary: 0.70,     // 70%를 급여로
+            dividend: 0.30    // 30%를 배당으로
+        },
+        { 
+            name: "혼합 2", 
+            salary: 0.50,     // 50%를 급여로
+            dividend: 0.50    // 50%를 배당으로 (균형)
+        },
+        { 
+            name: "혼합 3",
+            salary: 0.30,     // 30%를 급여로 (최소 근로소득 확보)
+            dividend: 0.70    // 70%를 배당으로
+        },
+        { 
+            name: "배당 중심",
+            salary: 0.20,     // 20%를 급여로 (최소한의 급여)
+            dividend: 0.80    // 80%를 배당으로 (최대 배당 활용)
+        }
+    ];
+    
+    // 각 케이스별 초기값 설정
+    for (let i = 0; i < strategicCases.length; i++) {
         const caseNum = i + 1;
-        const defaultTotal = defaultValues[i].salary + defaultValues[i].dividend;
-        const salaryRatio = defaultValues[i].salary / defaultTotal;
+        const caseData = strategicCases[i];
         
-        const newSalary = Math.round(totalAmount * salaryRatio);
-        const newDividend = totalAmount - newSalary;
+        // 본인 급여/배당 계산 (기본적으로 본인이 100% 수령)
+        const mainSalary = Math.round(totalAmount * caseData.salary);
+        const mainDividend = Math.round(totalAmount * caseData.dividend);
         
-        document.getElementById(`case${caseNum}-salary`).value = formatNumberWithCommas(newSalary);
-        document.getElementById(`case${caseNum}-dividend`).value = formatNumberWithCommas(newDividend);
+        // 입력 필드에 값 설정
+        document.getElementById(`case${caseNum}-salary`).value = formatNumberWithCommas(mainSalary);
+        document.getElementById(`case${caseNum}-dividend`).value = formatNumberWithCommas(mainDividend);
     }
     
+    // 케이스별 설명 업데이트
+    updateCaseDescriptions();
     updateAllCaseTotals();
+}
+
+// 케이스별 설명 업데이트 함수 추가
+function updateCaseDescriptions() {
+    const caseHeaders = document.querySelectorAll('.case-header');
+    const descriptions = [
+        '급여 중심<br><span class="case-subtitle">급여 87% + 배당 13%</span>',
+        '혼합 1<br><span class="case-subtitle">급여 70% + 배당 30%</span>',
+        '혼합 2<br><span class="case-subtitle">급여 50% + 배당 50%</span>',
+        '혼합 3<br><span class="case-subtitle">급여 30% + 배당 70%</span>',
+        '배당 중심<br><span class="case-subtitle">급여 20% + 배당 80%</span>'
+    ];
+    
+    caseHeaders.forEach((header, index) => {
+        if (index > 0) { // 첫 번째는 "구분" 헤더이므로 제외
+            header.innerHTML = `CASE ${index}<br><span class="case-subtitle">${descriptions[index-1].split('<br>')[1]}</span>`;
+        }
+    });
 }
 
 // 총처분 가능 금액 가져오기
@@ -179,28 +221,10 @@ function updateAllCasesFromTotal() {
     updateAllCaseTotals();
 }
 
-// 케이스별 급여액/배당액 상호 연동
+// 케이스별 총액 업데이트 (자동 조정 기능 제거)
 function updateCaseAmounts(caseNumber, changedField) {
-    const totalAmount = getTotalAmount();
-    const salaryInput = document.getElementById(`case${caseNumber}-salary`);
-    const dividendInput = document.getElementById(`case${caseNumber}-dividend`);
-    
-    if (changedField === 'salary') {
-        const salary = parseNumberFromInput(salaryInput.value);
-        const dividend = Math.max(0, totalAmount - salary);
-        dividendInput.value = formatNumberWithCommas(dividend);
-    } else if (changedField === 'dividend') {
-        const dividend = parseNumberFromInput(dividendInput.value);
-        const salary = Math.max(0, totalAmount - dividend);
-        salaryInput.value = formatNumberWithCommas(salary);
-    }
-    
     updateCaseTotal(caseNumber);
-    
-    // 추가 인원들도 재계산
-    if (typeof recalculateAllPersons === 'function') {
-        recalculateAllPersons();
-    }
+    checkTotalAmountStatus(caseNumber);
 }
 
 // 상세 분석 탭 전환
@@ -937,9 +961,21 @@ function displayResults(cases) {
 
 // 요약 테이블 업데이트
 function updateSummaryTable(cases) {
+    // 기존 best-value 클래스 제거
+    document.querySelectorAll('#summary-table .best-value').forEach(el => {
+        el.classList.remove('best-value');
+    });
+    
+    // 총 개인부담액과 실질부담총세금의 최소값 찾기
+    let minPersonalBurden = Infinity;
+    let minNetTaxEffect = Infinity;
+    let minPersonalBurdenIndex = -1;
+    let minNetTaxEffectIndex = -1;
+    
     cases.forEach((caseResult, index) => {
         const caseNum = index + 1;
         
+        // 기본 정보 업데이트
         document.getElementById(`summary-salary-${caseNum}`).textContent = 
             formatCurrency(caseResult.totalSalary);
         document.getElementById(`summary-dividend-${caseNum}`).textContent = 
@@ -971,7 +1007,29 @@ function updateSummaryTable(cases) {
             netEffectElement.classList.add('negative');
             netEffectElement.classList.remove('positive');
         }
+        
+        // 최소값 찾기
+        if (caseResult.totalPersonalBurden < minPersonalBurden) {
+            minPersonalBurden = caseResult.totalPersonalBurden;
+            minPersonalBurdenIndex = index;
+        }
+        
+        if (caseResult.netTaxEffect < minNetTaxEffect) {
+            minNetTaxEffect = caseResult.netTaxEffect;
+            minNetTaxEffectIndex = index;
+        }
     });
+    
+    // 최소값에 따봉 표시 추가
+    if (minPersonalBurdenIndex !== -1) {
+        const personalBurdenElement = document.getElementById(`summary-total-personal-burden-${minPersonalBurdenIndex + 1}`);
+        personalBurdenElement.classList.add('best-value');
+    }
+    
+    if (minNetTaxEffectIndex !== -1) {
+        const netEffectElement = document.getElementById(`summary-net-effect-${minNetTaxEffectIndex + 1}`);
+        netEffectElement.classList.add('best-value');
+    }
 }
 
 // 상세 분석 업데이트
@@ -1467,66 +1525,9 @@ function updateScenarioTable() {
 
 // 지분율 기반 초기값 설정 (새로 추가)
 function initializeEquityBasedValues() {
-    const totalAmount = getTotalAmount();
-    const totalEquityRatio = equityRatios.reduce((sum, ratio) => sum + ratio, 0) / 100;
-    
-    if (totalEquityRatio === 0) return;
-    
+    // 지분율 기반 배당 설정 자동 적용
     for (let caseNum = 1; caseNum <= 5; caseNum++) {
-        const mainSalary = parseNumberFromInput(document.getElementById(`case${caseNum}-salary`).value);
-        const mainDividend = parseNumberFromInput(document.getElementById(`case${caseNum}-dividend`).value);
-        const mainTotal = mainSalary + mainDividend;
-        
-        if (mainTotal === 0) continue;
-        
-        // 배당 비율 계산
-        const dividendRatio = mainDividend / mainTotal;
-        const totalDividendAmount = totalAmount * dividendRatio;
-        
-        // 추가 인원들 초기값 설정
-        for (let i = 0; i < additionalPersonsCount; i++) {
-            const personNum = i + 1;
-            const additionalEquityRatio = equityRatios[personNum] / 100;
-            
-            // 급여는 0으로 초기화
-            const salaryInput = document.getElementById(`case${caseNum}-salary-additional${personNum}`);
-            if (salaryInput) {
-                salaryInput.value = formatNumberWithCommas(0);
-            }
-            
-            // 배당은 지분율에 따라 분배
-            const additionalDividend = totalDividendAmount > 0 ? 
-                Math.round(totalDividendAmount * (additionalEquityRatio / totalEquityRatio)) : 0;
-            
-            const dividendInput = document.getElementById(`case${caseNum}-dividend-additional${personNum}`);
-            if (dividendInput) {
-                dividendInput.value = formatNumberWithCommas(additionalDividend);
-            }
-        }
-        
-        // 본인의 배당도 지분율에 따라 재계산
-        const mainEquityRatio = equityRatios[0] / 100;
-        const mainAllocatedDividend = totalDividendAmount > 0 ? 
-            Math.round(totalDividendAmount * (mainEquityRatio / totalEquityRatio)) : 0;
-        
-        // 본인의 급여는 총액에서 모든 배당을 뺀 나머지
-        let totalAllocatedDividend = mainAllocatedDividend;
-        for (let i = 0; i < additionalPersonsCount; i++) {
-            const personNum = i + 1;
-            const additionalDividendInput = document.getElementById(`case${caseNum}-dividend-additional${personNum}`);
-            if (additionalDividendInput) {
-                totalAllocatedDividend += parseNumberFromInput(additionalDividendInput.value) || 0;
-            }
-        }
-        
-        const adjustedMainSalary = Math.max(0, totalAmount - totalAllocatedDividend);
-        
-        // 본인 입력 필드 업데이트
-        document.getElementById(`case${caseNum}-salary`).value = formatNumberWithCommas(adjustedMainSalary);
-        document.getElementById(`case${caseNum}-dividend`).value = formatNumberWithCommas(mainAllocatedDividend);
-        
-        // 총합 업데이트
-        updateCaseTotal(caseNum);
+        setInitialDividendsByEquity(caseNum);
     }
 }
 
@@ -1545,9 +1546,15 @@ function createEquityBasedPersonRow(personNum, type, dataType) {
     row.innerHTML = `
         <td class="row-label">${label}</td>
         ${Array.from({length: 5}, (_, i) => 
-            `<td><input type="text" id="case${i+1}-${dataType}-additional${personNum}" 
-                       class="currency-input table-input additional-person-input" 
-                       ${isReadonly} data-person-num="${personNum}" data-type="${dataType}" data-case="${i+1}"></td>`
+            `<td>
+                <div class="input-with-button">
+                    <input type="text" id="case${i+1}-${dataType}-additional${personNum}" 
+                           class="currency-input table-input additional-person-input" 
+                           ${isReadonly} data-person-num="${personNum}" data-type="${dataType}" data-case="${i+1}">
+                    <button class="max-button" onclick="fillRemainingAmount(${i+1}, '${dataType}', ${personNum})" title="남은 전액 입력">전액</button>
+                    <button class="diff-button" onclick="fillDifferenceAmount(${i+1}, '${dataType}', ${personNum})" title="차액 입력">차액</button>
+                </div>
+            </td>`
         ).join('')}
     `;
     
@@ -1722,249 +1729,26 @@ function recalculateAllCasesWithEquity() {
 
 // 본인 급여 변경 처리
 function handleMainSalaryChange(caseNum) {
-    const mainSalary = parseNumberFromInput(document.getElementById(`case${caseNum}-salary`).value);
-    const mainDividend = parseNumberFromInput(document.getElementById(`case${caseNum}-dividend`).value);
-    
-    // 본인의 급여:배당 비율 계산
-    const mainTotal = mainSalary + mainDividend;
-    let salaryRatio = 0;
-    let dividendRatio = 0;
-    
-    if (mainTotal > 0) {
-        salaryRatio = mainSalary / mainTotal;
-        dividendRatio = mainDividend / mainTotal;
-    }
-    
-    // 추가 인원들의 배당만 재계산 (급여는 그대로 유지)
-    for (let i = 0; i < additionalPersonsCount; i++) {
-        const personNum = i + 1;
-        const additionalEquityRatio = equityRatios[personNum] / 100;
-        const mainEquityRatio = equityRatios[0] / 100;
-        
-        if (mainEquityRatio > 0) {
-            const ratio = additionalEquityRatio / mainEquityRatio;
-            const additionalDividend = Math.round(mainDividend * ratio);
-            
-            document.getElementById(`case${caseNum}-dividend-additional${personNum}`).value = formatNumberWithCommas(additionalDividend);
-        }
-    }
-    
     updateCaseTotal(caseNum);
+    checkTotalAmountStatus(caseNum);
 }
 
 // 본인 배당 변경 처리
 function handleMainDividendChange(caseNum) {
-    const totalAmount = getTotalAmount();
-    const mainSalary = parseNumberFromInput(document.getElementById(`case${caseNum}-salary`).value);
-    let mainDividend = parseNumberFromInput(document.getElementById(`case${caseNum}-dividend`).value);
-    
-    // 모든 급여 합계 계산 (추가 인원들 포함)
-    let totalSalary = mainSalary;
-    for (let i = 0; i < additionalPersonsCount; i++) {
-        const personNum = i + 1;
-        const additionalSalaryElement = document.getElementById(`case${caseNum}-salary-additional${personNum}`);
-        if (additionalSalaryElement) {
-            totalSalary += parseNumberFromInput(additionalSalaryElement.value) || 0;
-        }
-    }
-    
-    // 총 지분율 계산
-    const totalEquityRatio = equityRatios.reduce((sum, ratio) => sum + ratio, 0) / 100;
-    const mainEquityRatio = equityRatios[0] / 100;
-    
-    if (totalEquityRatio === 0 || mainEquityRatio === 0) {
-        updateCaseTotal(caseNum);
-        return;
-    }
-    
-    // 배당 가능한 최대 금액 = 총 금액 - 모든 급여
-    const maxAvailableForDividends = Math.max(0, totalAmount - totalSalary);
-    
-    // 본인 배당에 따른 총 배당 금액 계산 (지분율 비례)
-    const totalProjectedDividend = Math.round(mainDividend * (totalEquityRatio / mainEquityRatio));
-    
-    // 총 배당이 가능한 금액을 초과하는 경우
-    if (totalProjectedDividend > maxAvailableForDividends) {
-        // 가능한 최대 본인 배당 계산
-        const maxMainDividend = Math.floor(maxAvailableForDividends * mainEquityRatio / totalEquityRatio);
-        mainDividend = maxMainDividend;
-        
-        // 본인 배당 입력 필드 업데이트 (초과 방지)
-        document.getElementById(`case${caseNum}-dividend`).value = formatNumberWithCommas(mainDividend);
-        
-        // 사용자에게 알림
-        showLimitNotification(`총 처분가능금액(${formatCurrency(totalAmount)})을 초과할 수 없습니다.`);
-    }
-    
-    // 추가 인원들의 배당을 지분율 비례로 조정
-    let totalAdditionalDividend = 0;
-    
-    if (mainEquityRatio > 0) {
-        for (let i = 0; i < additionalPersonsCount; i++) {
-            const personNum = i + 1;
-            const additionalEquityRatio = equityRatios[personNum] / 100;
-            const ratio = additionalEquityRatio / mainEquityRatio;
-            const additionalDividend = Math.round(mainDividend * ratio);
-            
-            document.getElementById(`case${caseNum}-dividend-additional${personNum}`).value = formatNumberWithCommas(additionalDividend);
-            totalAdditionalDividend += additionalDividend;
-        }
-    }
-    
-    // 총 배당 + 총 급여가 총 금액을 초과하는지 최종 확인
-    const totalDividend = mainDividend + totalAdditionalDividend;
-    const totalUsed = totalSalary + totalDividend;
-    
-    if (totalUsed > totalAmount) {
-        // 초과분만큼 본인 급여에서 차감
-        const excess = totalUsed - totalAmount;
-        const adjustedMainSalary = Math.max(0, mainSalary - excess);
-        document.getElementById(`case${caseNum}-salary`).value = formatNumberWithCommas(adjustedMainSalary);
-    }
-    
     updateCaseTotal(caseNum);
+    checkTotalAmountStatus(caseNum);
 }
 
 // 추가 인원 급여 변경 처리
 function handleAdditionalSalaryChange(caseNum, personNum) {
-    const totalAmount = getTotalAmount();
-    
-    // 모든 배당 합계 계산
-    let totalDividend = parseNumberFromInput(document.getElementById(`case${caseNum}-dividend`).value) || 0;
-    
-    for (let i = 0; i < additionalPersonsCount; i++) {
-        const pNum = i + 1;
-        const additionalDividendElement = document.getElementById(`case${caseNum}-dividend-additional${pNum}`);
-        if (additionalDividendElement) {
-            totalDividend += parseNumberFromInput(additionalDividendElement.value) || 0;
-        }
-    }
-    
-    // 추가 인원들의 급여 합계 계산
-    let totalAdditionalSalary = 0;
-    for (let i = 0; i < additionalPersonsCount; i++) {
-        const pNum = i + 1;
-        const additionalSalaryElement = document.getElementById(`case${caseNum}-salary-additional${pNum}`);
-        if (additionalSalaryElement) {
-            totalAdditionalSalary += parseNumberFromInput(additionalSalaryElement.value) || 0;
-        }
-    }
-    
-    // 본인 급여 = 총액 - 모든 배당 - 추가 인원들 급여
-    const adjustedMainSalary = Math.max(0, totalAmount - totalDividend - totalAdditionalSalary);
-    document.getElementById(`case${caseNum}-salary`).value = formatNumberWithCommas(adjustedMainSalary);
-    
     updateCaseTotal(caseNum);
+    checkTotalAmountStatus(caseNum);
 }
 
-// 추가 인원 배당 변경 처리
+// 추가 인원 배당 변경 처리 (단순 입력만 처리)
 function handleAdditionalDividendChange(caseNum, personNum) {
-    const totalAmount = getTotalAmount();
-    let changedDividend = parseNumberFromInput(document.getElementById(`case${caseNum}-dividend-additional${personNum}`).value) || 0;
-    
-    // 변경된 인원의 지분율
-    const changedPersonEquityRatio = equityRatios[personNum] / 100;
-    
-    if (changedPersonEquityRatio === 0) return;
-    
-    // 모든 급여 합계 계산
-    let totalSalary = parseNumberFromInput(document.getElementById(`case${caseNum}-salary`).value) || 0;
-    for (let i = 0; i < additionalPersonsCount; i++) {
-        const pNum = i + 1;
-        const additionalSalaryElement = document.getElementById(`case${caseNum}-salary-additional${pNum}`);
-        if (additionalSalaryElement) {
-            totalSalary += parseNumberFromInput(additionalSalaryElement.value) || 0;
-        }
-    }
-    
-    // 배당 가능한 최대 금액 = 총 금액 - 모든 급여
-    const maxAvailableForDividends = Math.max(0, totalAmount - totalSalary);
-    
-    // 총 지분율 계산
-    const totalEquityRatio = equityRatios.reduce((sum, ratio) => sum + ratio, 0) / 100;
-    
-    // 변경된 배당에 따른 총 배당 금액 계산 (지분율 비례)
-    const totalProjectedDividend = Math.round(changedDividend * (totalEquityRatio / changedPersonEquityRatio));
-    
-    // 총 배당이 가능한 금액을 초과하는 경우
-    if (totalProjectedDividend > maxAvailableForDividends) {
-        // 가능한 최대 해당 인원 배당 계산
-        const maxChangedDividend = Math.floor(maxAvailableForDividends * changedPersonEquityRatio / totalEquityRatio);
-        changedDividend = maxChangedDividend;
-        
-        // 해당 인원 배당 입력 필드 업데이트 (초과 방지)
-        document.getElementById(`case${caseNum}-dividend-additional${personNum}`).value = formatNumberWithCommas(changedDividend);
-        
-        // 사용자에게 알림
-        showLimitNotification(`총 처분가능금액(${formatCurrency(totalAmount)})을 초과할 수 없습니다.`);
-    }
-    
-    // 변경된 배당을 기준으로 다른 모든 배당을 지분율 비례로 조정
-    const mainEquityRatio = equityRatios[0] / 100;
-    
-    // 본인 배당 조정
-    const adjustedMainDividend = Math.round(changedDividend * (mainEquityRatio / changedPersonEquityRatio));
-    document.getElementById(`case${caseNum}-dividend`).value = formatNumberWithCommas(adjustedMainDividend);
-    
-    // 다른 추가 인원들 배당 조정
-    for (let i = 0; i < additionalPersonsCount; i++) {
-        const pNum = i + 1;
-        if (pNum !== personNum) {
-            const pEquityRatio = equityRatios[pNum] / 100;
-            const adjustedDividend = Math.round(changedDividend * (pEquityRatio / changedPersonEquityRatio));
-            document.getElementById(`case${caseNum}-dividend-additional${pNum}`).value = formatNumberWithCommas(adjustedDividend);
-        }
-    }
-    
-    // 모든 배당 합계 계산
-    let totalDividend = adjustedMainDividend;
-    for (let i = 0; i < additionalPersonsCount; i++) {
-        const pNum = i + 1;
-        const additionalDividendElement = document.getElementById(`case${caseNum}-dividend-additional${pNum}`);
-        if (additionalDividendElement) {
-            totalDividend += parseNumberFromInput(additionalDividendElement.value) || 0;
-        }
-    }
-    
-    // 총 사용 금액이 총 금액을 초과하는지 최종 확인
-    const totalUsed = totalSalary + totalDividend;
-    
-    if (totalUsed > totalAmount) {
-        const excess = totalUsed - totalAmount;
-        const mainSalary = parseNumberFromInput(document.getElementById(`case${caseNum}-salary`).value) || 0;
-        
-        if (mainSalary >= excess) {
-            // 본인 급여에서 초과분 차감 가능
-            const adjustedMainSalary = mainSalary - excess;
-            document.getElementById(`case${caseNum}-salary`).value = formatNumberWithCommas(adjustedMainSalary);
-        } else {
-            // 본인 급여로 부족하면 급여를 0으로 하고 나머지는 배당에서 비례 차감
-            document.getElementById(`case${caseNum}-salary`).value = formatNumberWithCommas(0);
-            const remainingExcess = excess - mainSalary;
-            
-            // 현재 총 배당에서 나머지 초과분을 비례적으로 차감
-            const reductionRatio = (totalDividend - remainingExcess) / totalDividend;
-            
-            // 본인 배당 조정
-            const newMainDividend = Math.floor(adjustedMainDividend * reductionRatio);
-            document.getElementById(`case${caseNum}-dividend`).value = formatNumberWithCommas(newMainDividend);
-            
-            // 추가 인원들 배당 비례 조정
-            for (let i = 0; i < additionalPersonsCount; i++) {
-                const pNum = i + 1;
-                const additionalDividendElement = document.getElementById(`case${caseNum}-dividend-additional${pNum}`);
-                if (additionalDividendElement) {
-                    const currentDividend = parseNumberFromInput(additionalDividendElement.value) || 0;
-                    const newDividend = Math.floor(currentDividend * reductionRatio);
-                    additionalDividendElement.value = formatNumberWithCommas(newDividend);
-                }
-            }
-            
-            showLimitNotification(`총 처분가능금액(${formatCurrency(totalAmount)})을 초과하여 배당을 비례적으로 조정했습니다.`);
-        }
-    }
-    
     updateCaseTotal(caseNum);
+    checkTotalAmountStatus(caseNum);
 }
 
 // 추가 인원을 위한 간소화된 세금 계산
@@ -2294,4 +2078,423 @@ function activateDetailCase(caseNumber) {
     if (targetButton) {
         targetButton.classList.add('active');
     }
+}
+
+// 총액 상태 확인 및 시각적 피드백
+function checkTotalAmountStatus(caseNum) {
+    const totalAmount = getTotalAmount();
+    const totalElement = document.getElementById(`case${caseNum}-total`);
+    
+    // 현재 사용 금액 계산
+    let totalUsed = 0;
+    
+    // 본인 급여 + 배당
+    totalUsed += parseNumberFromInput(document.getElementById(`case${caseNum}-salary`).value) || 0;
+    totalUsed += parseNumberFromInput(document.getElementById(`case${caseNum}-dividend`).value) || 0;
+    
+    // 추가 인원들 급여 + 배당
+    for (let i = 0; i < additionalPersonsCount; i++) {
+        const personNum = i + 1;
+        const salaryElement = document.getElementById(`case${caseNum}-salary-additional${personNum}`);
+        const dividendElement = document.getElementById(`case${caseNum}-dividend-additional${personNum}`);
+        
+        if (salaryElement) totalUsed += parseNumberFromInput(salaryElement.value) || 0;
+        if (dividendElement) totalUsed += parseNumberFromInput(dividendElement.value) || 0;
+    }
+    
+    // 차액 계산
+    const difference = totalAmount - totalUsed;
+    
+    // 기존 상태 메시지 제거
+    const existingStatus = document.getElementById(`case${caseNum}-status`);
+    if (existingStatus) {
+        existingStatus.remove();
+    }
+    
+    // 총액 표시 색상 변경
+    if (difference === 0) {
+        // 정확히 맞음
+        totalElement.style.color = '#28a745';
+        totalElement.style.fontWeight = 'bold';
+    } else if (difference > 0) {
+        // 부족함 (남은 금액 있음)
+        totalElement.style.color = '#007bff';
+        totalElement.style.fontWeight = 'bold';
+        
+        // 상태 메시지 추가
+        const statusDiv = document.createElement('div');
+        statusDiv.id = `case${caseNum}-status`;
+        statusDiv.className = 'amount-status';
+        statusDiv.innerHTML = `<span class="status-text">남은 금액: ${formatNumberWithCommas(difference)}원</span>`;
+        totalElement.parentNode.appendChild(statusDiv);
+    } else {
+        // 초과함
+        totalElement.style.color = '#dc3545';
+        totalElement.style.fontWeight = 'bold';
+        
+        // 상태 메시지 추가
+        const statusDiv = document.createElement('div');
+        statusDiv.id = `case${caseNum}-status`;
+        statusDiv.className = 'amount-status error';
+        statusDiv.innerHTML = `<span class="status-text">초과 금액: ${formatNumberWithCommas(Math.abs(difference))}원</span>`;
+        totalElement.parentNode.appendChild(statusDiv);
+    }
+}
+
+// 지분율 기반 초기 배당 설정
+function setInitialDividendsByEquity(caseNum) {
+    const totalAmount = getTotalAmount();
+    const mainSalary = parseNumberFromInput(document.getElementById(`case${caseNum}-salary`).value) || 0;
+    
+    // 모든 급여 합계 계산
+    let totalSalary = mainSalary;
+    for (let i = 0; i < additionalPersonsCount; i++) {
+        const personNum = i + 1;
+        const salaryElement = document.getElementById(`case${caseNum}-salary-additional${personNum}`);
+        if (salaryElement) {
+            totalSalary += parseNumberFromInput(salaryElement.value) || 0;
+        }
+    }
+    
+    // 배당 가능한 금액
+    const availableForDividends = Math.max(0, totalAmount - totalSalary);
+    
+    if (availableForDividends <= 0) return;
+    
+    // 지분율 기반 배당 설정
+    const mainEquityRatio = equityRatios[0] / 100;
+    const mainDividend = Math.round(availableForDividends * mainEquityRatio);
+    document.getElementById(`case${caseNum}-dividend`).value = formatNumberWithCommas(mainDividend);
+    
+    // 추가 인원들 배당 설정
+    for (let i = 0; i < additionalPersonsCount; i++) {
+        const personNum = i + 1;
+        const additionalEquityRatio = equityRatios[personNum] / 100;
+        const additionalDividend = Math.round(availableForDividends * additionalEquityRatio);
+        document.getElementById(`case${caseNum}-dividend-additional${personNum}`).value = formatNumberWithCommas(additionalDividend);
+    }
+    
+    updateCaseTotal(caseNum);
+    checkTotalAmountStatus(caseNum);
+}
+
+// 남은 전액 입력 기능
+function fillRemainingAmount(caseNum, inputType, personNum = null) {
+    const totalAmount = getTotalAmount();
+    
+    // 현재 사용 금액 계산 (해당 입력 필드 제외)
+    let totalUsed = 0;
+    
+    // 본인 급여 + 배당
+    if (!(inputType === 'salary' && personNum === null)) {
+        totalUsed += parseNumberFromInput(document.getElementById(`case${caseNum}-salary`).value) || 0;
+    }
+    if (!(inputType === 'dividend' && personNum === null)) {
+        totalUsed += parseNumberFromInput(document.getElementById(`case${caseNum}-dividend`).value) || 0;
+    }
+    
+    // 추가 인원들 급여 + 배당
+    for (let i = 0; i < additionalPersonsCount; i++) {
+        const pNum = i + 1;
+        
+        if (!(inputType === 'salary' && personNum === pNum)) {
+            const salaryElement = document.getElementById(`case${caseNum}-salary-additional${pNum}`);
+            if (salaryElement) totalUsed += parseNumberFromInput(salaryElement.value) || 0;
+        }
+        
+        if (!(inputType === 'dividend' && personNum === pNum)) {
+            const dividendElement = document.getElementById(`case${caseNum}-dividend-additional${pNum}`);
+            if (dividendElement) totalUsed += parseNumberFromInput(dividendElement.value) || 0;
+        }
+    }
+    
+    // 남은 금액 계산
+    const remainingAmount = Math.max(0, totalAmount - totalUsed);
+    
+    // 해당 입력 필드에 남은 금액 입력
+    let targetInput;
+    if (personNum === null) {
+        targetInput = document.getElementById(`case${caseNum}-${inputType}`);
+    } else {
+        targetInput = document.getElementById(`case${caseNum}-${inputType}-additional${personNum}`);
+    }
+    
+    if (targetInput) {
+        targetInput.value = formatNumberWithCommas(remainingAmount);
+        updateCaseTotal(caseNum);
+        checkTotalAmountStatus(caseNum);
+    }
+}
+
+// 모든 케이스에 지분율 기반 배당 설정
+function setAllDividendsByEquity() {
+    const totalAmount = getTotalAmount();
+    
+    if (additionalPersonsCount === 0) {
+        // 추가인원이 없을 때는 기본 케이스 유지
+        setDefaultValues();
+        return;
+    }
+    
+    // 보수적 추가인원 활용 전략
+    const conservativeStrategies = [
+        { 
+            name: "급여 중심",
+            mainSalaryRatio: 0.80,      // 본인 급여 80%
+            additionalSalaryRatio: 0.07, // 추가인원당 급여 7%
+            dividendRatio: 0.13         // 배당 13%
+        },
+        { 
+            name: "혼합 1",
+            mainSalaryRatio: 0.60,      // 본인 급여 60%
+            additionalSalaryRatio: 0.10, // 추가인원당 급여 10%
+            dividendRatio: 0.30         // 배당 30%
+        },
+        { 
+            name: "혼합 2",
+            mainSalaryRatio: 0.40,      // 본인 급여 40%
+            additionalSalaryRatio: 0.10, // 추가인원당 급여 10%
+            dividendRatio: 0.50         // 배당 50%
+        },
+        { 
+            name: "혼합 3",
+            mainSalaryRatio: 0.25,      // 본인 급여 25%
+            additionalSalaryRatio: 0.05, // 추가인원당 급여 5%
+            dividendRatio: 0.70         // 배당 70%
+        },
+        { 
+            name: "배당 중심",
+            mainSalaryRatio: 0.15,      // 본인 급여 15%
+            additionalSalaryRatio: 0.05, // 추가인원당 급여 5%
+            dividendRatio: 0.80         // 배당 80%
+        }
+    ];
+    
+    // 각 케이스별 설정
+    for (let caseNum = 1; caseNum <= 5; caseNum++) {
+        const strategy = conservativeStrategies[caseNum - 1];
+        
+        // 본인 급여 계산
+        const mainSalary = Math.round(totalAmount * strategy.mainSalaryRatio);
+        
+        // 추가인원 급여 계산 (보수적 적용)
+        const additionalSalaryPerPerson = Math.round(totalAmount * strategy.additionalSalaryRatio);
+        
+        // 배당 계산 (지분율 기반)
+        const totalDividend = Math.round(totalAmount * strategy.dividendRatio);
+        
+        // 본인 배당 (지분율 기반)
+        const mainEquityRatio = equityRatios[0] / 100;
+        const mainDividend = Math.round(totalDividend * mainEquityRatio);
+        
+        // 입력 필드에 값 설정
+        document.getElementById(`case${caseNum}-salary`).value = formatNumberWithCommas(mainSalary);
+        document.getElementById(`case${caseNum}-dividend`).value = formatNumberWithCommas(mainDividend);
+        
+        // 추가인원 설정
+        for (let i = 0; i < additionalPersonsCount; i++) {
+            const personNum = i + 1;
+            const personSalaryElement = document.getElementById(`case${caseNum}-salary-additional${personNum}`);
+            const personDividendElement = document.getElementById(`case${caseNum}-dividend-additional${personNum}`);
+            
+            if (personSalaryElement && personDividendElement) {
+                // 추가인원 급여 (보수적 적용)
+                personSalaryElement.value = formatNumberWithCommas(additionalSalaryPerPerson);
+                
+                // 추가인원 배당 (지분율 기반)
+                const personEquityRatio = equityRatios[i + 1] / 100;
+                const personDividend = Math.round(totalDividend * personEquityRatio);
+                personDividendElement.value = formatNumberWithCommas(personDividend);
+            }
+        }
+    }
+    
+    // 케이스별 설명 업데이트
+    updateCaseDescriptionsWithAdditionalPersons();
+    updateAllCaseTotals();
+    
+    // 알림 표시
+    showEquityNotification();
+}
+
+// 추가인원 포함 케이스 설명 업데이트
+function updateCaseDescriptionsWithAdditionalPersons() {
+    const caseHeaders = document.querySelectorAll('.case-header');
+    const descriptions = [
+        `급여 중심<br><span class="case-subtitle">보수적 추가인원 활용</span>`,
+        `혼합 1<br><span class="case-subtitle">균형잡힌 분산 전략</span>`,
+        `혼합 2<br><span class="case-subtitle">배당 중심 전략</span>`,
+        `혼합 3<br><span class="case-subtitle">높은 배당 비율</span>`,
+        `배당 중심<br><span class="case-subtitle">최대 배당 활용</span>`
+    ];
+    
+    caseHeaders.forEach((header, index) => {
+        if (index > 0) { // 첫 번째는 "구분" 헤더이므로 제외
+            header.innerHTML = `CASE ${index}<br><span class="case-subtitle">${descriptions[index-1].split('<br>')[1]}</span>`;
+        }
+    });
+}
+
+// 지분율 기반 배당 설정 알림
+function showEquityNotification() {
+    const notification = document.createElement('div');
+    notification.className = 'notification success';
+    notification.innerHTML = `
+        <div class="notification-content">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <div>
+                <strong>지분율 기반 배당 설정 완료</strong>
+                <p>보수적인 추가인원 활용 전략으로 케이스들이 설정되었습니다.</p>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 100);
+    
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            document.body.removeChild(notification);
+        }, 300);
+    }, 3000);
+}
+
+// 차액 입력 함수 - 총 금액에서 다른 입력값들을 뺀 차액을 계산해서 입력
+function fillDifferenceAmount(caseNum, inputType, personNum = null) {
+    const totalAmount = getTotalAmount();
+    
+    if (totalAmount <= 0) {
+        showLimitNotification('총 처분 가능 금액을 먼저 입력해주세요.');
+        return;
+    }
+    
+    // 해당 케이스의 모든 입력값들의 합계 계산
+    let currentSum = 0;
+    
+    // 본인 급여/배당 합계
+    const mainSalary = parseNumberFromInput(document.getElementById(`case${caseNum}-salary`).value);
+    const mainDividend = parseNumberFromInput(document.getElementById(`case${caseNum}-dividend`).value);
+    
+    // 추가 인원들의 급여/배당 합계
+    let additionalSum = 0;
+    for (let i = 0; i < additionalPersonsCount; i++) {
+        const additionalPersonNum = i + 1;
+        const additionalSalaryElement = document.getElementById(`case${caseNum}-salary-additional${additionalPersonNum}`);
+        const additionalDividendElement = document.getElementById(`case${caseNum}-dividend-additional${additionalPersonNum}`);
+        
+        if (additionalSalaryElement && additionalDividendElement) {
+            additionalSum += parseNumberFromInput(additionalSalaryElement.value);
+            additionalSum += parseNumberFromInput(additionalDividendElement.value);
+        }
+    }
+    
+    // 현재 수정하려는 필드를 제외한 모든 값의 합계
+    if (personNum === null) {
+        // 본인 필드인 경우
+        if (inputType === 'salary') {
+            currentSum = mainDividend + additionalSum;
+        } else if (inputType === 'dividend') {
+            currentSum = mainSalary + additionalSum;
+        }
+    } else {
+        // 추가 인원 필드인 경우
+        currentSum = mainSalary + mainDividend;
+        
+        // 다른 추가 인원들의 값들 합산
+        for (let i = 0; i < additionalPersonsCount; i++) {
+            const additionalPersonNum = i + 1;
+            if (additionalPersonNum !== personNum) {
+                const otherSalaryElement = document.getElementById(`case${caseNum}-salary-additional${additionalPersonNum}`);
+                const otherDividendElement = document.getElementById(`case${caseNum}-dividend-additional${additionalPersonNum}`);
+                
+                if (otherSalaryElement && otherDividendElement) {
+                    currentSum += parseNumberFromInput(otherSalaryElement.value);
+                    currentSum += parseNumberFromInput(otherDividendElement.value);
+                }
+            }
+        }
+        
+        // 같은 추가 인원의 다른 필드 값도 제외
+        const targetPersonSalaryElement = document.getElementById(`case${caseNum}-salary-additional${personNum}`);
+        const targetPersonDividendElement = document.getElementById(`case${caseNum}-dividend-additional${personNum}`);
+        
+        if (inputType === 'salary' && targetPersonDividendElement) {
+            currentSum += parseNumberFromInput(targetPersonDividendElement.value);
+        } else if (inputType === 'dividend' && targetPersonSalaryElement) {
+            currentSum += parseNumberFromInput(targetPersonSalaryElement.value);
+        }
+    }
+    
+    // 차액 계산
+    const difference = totalAmount - currentSum;
+    
+    // 차액이 음수인 경우 0으로 설정
+    const finalAmount = Math.max(0, difference);
+    
+    // 해당 필드에 차액 입력
+    let targetElement;
+    if (personNum === null) {
+        // 본인 필드
+        targetElement = document.getElementById(`case${caseNum}-${inputType}`);
+    } else {
+        // 추가 인원 필드
+        targetElement = document.getElementById(`case${caseNum}-${inputType}-additional${personNum}`);
+    }
+    
+    if (targetElement) {
+        targetElement.value = formatNumberWithCommas(finalAmount);
+        
+        // 입력 이벤트 트리거하여 총계 업데이트
+        const event = new Event('input', { bubbles: true });
+        targetElement.dispatchEvent(event);
+        
+        // 시각적 피드백
+        targetElement.style.backgroundColor = '#e8f5e8';
+        setTimeout(() => {
+            targetElement.style.backgroundColor = '';
+        }, 1000);
+        
+        // 차액 정보 알림
+        if (difference < 0) {
+            showDifferenceNotification(`차액이 부족하여 0원이 입력되었습니다. (부족금액: ${formatCurrency(Math.abs(difference))})`);
+        } else {
+            showDifferenceNotification(`차액 ${formatCurrency(finalAmount)}이 입력되었습니다.`);
+        }
+    }
+}
+
+// 차액 입력 알림 표시
+function showDifferenceNotification(message) {
+    const notification = document.createElement('div');
+    notification.className = 'notification info';
+    notification.innerHTML = `
+        <div class="notification-content">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <div>
+                <strong>차액 입력 완료</strong>
+                <p>${message}</p>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 100);
+    
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            document.body.removeChild(notification);
+        }, 300);
+    }, 2500);
 }
