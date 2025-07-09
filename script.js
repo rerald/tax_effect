@@ -546,7 +546,7 @@ function calculateIncomeTax(taxableIncome) {
     }
     
     for (let bracket of TAX_RATES.income) {
-        if (taxableIncome > bracket.min && taxableIncome <= bracket.max) {
+        if (taxableIncome >= bracket.min && taxableIncome <= bracket.max) {
             const tax = taxableIncome * bracket.rate - bracket.deduction;
             return Math.max(tax, 0); // 음수가 되지 않도록 보장
         }
@@ -626,7 +626,7 @@ function calculateEarnedIncomeTaxCredit(calculatedTax, totalSalary) {
  * 1. 인적공제: 본인 150만원 + 부양가족 × 150만원
  * 2. 연금보험료공제: 4대보험료 납부액 전액
  * 3. 신용카드등 사용금액 공제: (사용액 - 급여×25%) × 20% (최대 300만원)
- * 4. 주택자금공제: 월세 750만원 한도 (단순화)
+ * 4. 주택자금공제: 월세 등 (현실적 수준으로 조정)
  * 
  * @param {number} earnedIncome - 근로소득금액
  * @param {number} socialInsurance - 4대보험료 납부액
@@ -641,14 +641,14 @@ function calculateTotalDeductions(earnedIncome, socialInsurance, familyCount, de
     // 연금보험료공제 (4대보험료)
     const pensionDeduction = socialInsurance;
     
-    // 신용카드 등 사용금액 소득공제 (간소화)
+    // 신용카드 등 사용금액 소득공제 (현실적 수준으로 조정)
     // 급여의 25% 초과분의 20% 공제 (최대 300만원)
     const creditCardThreshold = earnedIncome * 0.25;
-    const estimatedCreditCardUsage = Math.min(earnedIncome * 0.3, 30000000); // 급여의 30% 또는 3천만원 중 적은 금액
+    const estimatedCreditCardUsage = Math.max(earnedIncome * 0.35, creditCardThreshold + 5000000); // 급여의 35% 또는 기준액+500만원 중 큰 금액
     const creditCardDeduction = Math.max(0, Math.min((estimatedCreditCardUsage - creditCardThreshold) * 0.2, 3000000));
     
-    // 주택자금공제 (단순화 - 월세 750만원 한도)
-    const housingDeduction = 7500000;
+    // 주택자금공제 (현실적 수준으로 조정)
+    const housingDeduction = Math.min(earnedIncome * 0.12, 4000000); // 급여의 12% 또는 400만원 중 적은 금액
     
     // 기타소득공제 합계
     const otherDeductions = creditCardDeduction + housingDeduction;
@@ -708,6 +708,9 @@ function calculateTaxCredit(deductionType) {
 function calculateSingleCase(salary, dividend, familyCount, deductionType) {
     const result = {};
     
+    console.log(`=== 세금 계산 시작 ===`);
+    console.log(`급여: ${formatCurrency(salary)}, 배당: ${formatCurrency(dividend)}`);
+    
     // 1. 근로소득 계산
     result.totalSalary = salary;
     const earnedIncomeDeductionDetail = calculateEarnedIncomeDeduction(salary);
@@ -715,10 +718,15 @@ function calculateSingleCase(salary, dividend, familyCount, deductionType) {
     result.earnedIncomeDeductionExplanation = earnedIncomeDeductionDetail.explanation;
     result.earnedIncome = salary - result.earnedIncomeDeduction;
     
+    console.log(`근로소득공제: ${formatCurrency(result.earnedIncomeDeduction)}`);
+    console.log(`근로소득금액: ${formatCurrency(result.earnedIncome)}`);
+    
     const socialInsuranceDetail = calculateSocialInsurance(salary);
     result.socialInsurance = socialInsuranceDetail.total;
     result.socialInsuranceExplanation = socialInsuranceDetail.explanation;
     result.socialInsuranceBreakdown = socialInsuranceDetail.breakdown;
+    
+    console.log(`4대보험료: ${formatCurrency(result.socialInsurance)}`);
     
     // 2. 배당소득 계산
     result.dividendIncome = dividend;
@@ -726,8 +734,13 @@ function calculateSingleCase(salary, dividend, familyCount, deductionType) {
     result.grossUp = grossUpDetail.amount;
     result.grossUpExplanation = grossUpDetail.explanation;
     
+    console.log(`배당소득: ${formatCurrency(result.dividendIncome)}`);
+    console.log(`Gross Up: ${formatCurrency(result.grossUp)}`);
+    
     // 3. 종합소득 계산
     result.totalIncome = result.earnedIncome + result.dividendIncome + result.grossUp;
+    
+    console.log(`종합소득금액: ${formatCurrency(result.totalIncome)}`);
     
     // 4. 종합소득공제
     const totalDeductionsDetail = calculateTotalDeductions(
@@ -739,11 +752,18 @@ function calculateSingleCase(salary, dividend, familyCount, deductionType) {
     result.totalDeductions = totalDeductionsDetail.amount;
     result.totalDeductionsExplanation = totalDeductionsDetail.explanation;
     
+    console.log(`총 소득공제: ${formatCurrency(result.totalDeductions)}`);
+    console.log(`소득공제 상세: ${result.totalDeductionsExplanation}`);
+    
     // 5. 과세표준
     result.taxableIncome = Math.max(result.totalIncome - result.totalDeductions, 0);
     
+    console.log(`과세표준: ${formatCurrency(result.taxableIncome)}`);
+    
     // 6. 산출세액
     result.calculatedTax = calculateIncomeTax(result.taxableIncome);
+    
+    console.log(`산출세액: ${formatCurrency(result.calculatedTax)}`);
     
     // 7. 세액공제
     const dividendCreditDetail = calculateDividendCredit(result.dividendIncome, result.grossUp);
@@ -753,12 +773,20 @@ function calculateSingleCase(salary, dividend, familyCount, deductionType) {
     const taxCreditDetail = calculateTaxCredit(deductionType);
     result.taxCredit = taxCreditDetail.amount;
     result.taxCreditExplanation = taxCreditDetail.explanation;
-    result.additionalCredits = DEDUCTIONS.pensionCredit + DEDUCTIONS.childCredit;
+    result.additionalCredits = DEDUCTIONS.pensionCredit; // 자녀세액공제 제거
+    
+    console.log(`배당세액공제: ${formatCurrency(result.dividendCredit)}`);
+    console.log(`근로소득세액공제: ${formatCurrency(result.earnedIncomeTaxCredit)}`);
+    console.log(`표준/특별세액공제: ${formatCurrency(result.taxCredit)}`);
+    console.log(`연금계좌세액공제: ${formatCurrency(result.additionalCredits)}`);
     
     // 8. 결정세액
     const totalCredits = result.dividendCredit + result.earnedIncomeTaxCredit + 
                         result.taxCredit + result.additionalCredits;
     result.finalTax = Math.max(result.calculatedTax - totalCredits, 0);
+    
+    console.log(`총 세액공제: ${formatCurrency(totalCredits)}`);
+    console.log(`결정세액: ${formatCurrency(result.finalTax)}`);
     
     // 9. 법인세 절감효과 (급여는 비용공제, 배당은 세후지급)
     // 급여 + 회사부담 4대보험료 지급으로 인한 법인소득 감소분에 대한 법인세 절감
@@ -773,6 +801,9 @@ function calculateSingleCase(salary, dividend, familyCount, deductionType) {
     
     // 11. 순 세금효과 (총 개인부담액 - 법인세절감)
     result.netTaxEffect = result.totalPersonalBurden - result.corporateTaxSaving;
+    
+    console.log(`총 개인부담액: ${formatCurrency(result.totalPersonalBurden)}`);
+    console.log(`=== 세금 계산 완료 ===\n`);
     
     return result;
 }
