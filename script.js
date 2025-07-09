@@ -332,13 +332,12 @@ function calculateSocialInsurance(totalSalary) {
             employment: 0,
             total: 0,
             explanation: '급여액 0원: 4대보험료 없음',
-            breakdown: '국민연금: 0원, 건강보험: 0원, 장기요양: 0원, 고용보험: 0원'
+            breakdown: '국민연금: 0원, 건강보험: 0원, 장기요양: 0원'
         };
     }
     
     const pension = SOCIAL_INSURANCE_2025.nationalPension;
     const health = SOCIAL_INSURANCE_2025.healthInsurance;
-    const employment = SOCIAL_INSURANCE_2025.employmentInsurance;
     
     // 국민연금: 상한액 적용 (월 574만원 → 연 6,888만원)
     const pensionableIncome = Math.min(totalSalary, pension.maxIncome);
@@ -350,49 +349,44 @@ function calculateSocialInsurance(totalSalary) {
     // 장기요양보험료 (건강보험료의 12.95%)
     const longTermCareFee = healthInsuranceFee * health.longTermCareRate;
     
-    // 고용보험료 (0.9%)
-    const employmentInsuranceFee = totalSalary * employment.employeeRate;
-    
-    const total = nationalPensionFee + healthInsuranceFee + longTermCareFee + employmentInsuranceFee;
+    // 임원은 고용보험, 산재보험 제외
+    const total = nationalPensionFee + healthInsuranceFee + longTermCareFee;
     
     // 계산 설명
     const pensionExplanation = pensionableIncome < totalSalary 
         ? `국민연금: ${formatCurrency(pensionableIncome)}(상한) × 4.5%` 
         : `국민연금: ${formatCurrency(totalSalary)} × 4.5%`;
     
-    const explanation = `${pensionExplanation} + 건강보험: ${formatCurrency(totalSalary)} × 3.55% + 장기요양: 건강보험료 × 12.95% + 고용보험: ${formatCurrency(totalSalary)} × 0.9%`;
+    const explanation = `${pensionExplanation} + 건강보험: ${formatCurrency(totalSalary)} × 3.55% + 장기요양: 건강보험료 × 12.95% (임원: 고용산재보험 제외)`;
     
     return {
         nationalPension: nationalPensionFee,
         healthInsurance: healthInsuranceFee,
         longTermCare: longTermCareFee,
-        employment: employmentInsuranceFee,
+        employment: 0, // 임원은 고용보험 제외
         total: total,
         explanation: explanation,
-        breakdown: `국민연금: ${formatCurrency(nationalPensionFee)}, 건강보험: ${formatCurrency(healthInsuranceFee)}, 장기요양: ${formatCurrency(longTermCareFee)}, 고용보험: ${formatCurrency(employmentInsuranceFee)}`
+        breakdown: `국민연금: ${formatCurrency(nationalPensionFee)}, 건강보험: ${formatCurrency(healthInsuranceFee)}, 장기요양: ${formatCurrency(longTermCareFee)}`
     };
 }
 
 /**
- * 회사부담 4대보험료 계산 - 법인세 절감 효과 계산용 (2025년 기준)
+ * 회사부담 사회보험료 계산 - 법인세 절감 효과 계산용 (2025년 기준)
  * 
  * 계산방법:
  * 1. 국민연금: 급여 × 4.5% (근로자와 동일, 월 574만원 상한)
  * 2. 건강보험: 급여 × 3.55% (근로자와 동일)
  * 3. 장기요양보험: 건강보험료 × 12.95% (근로자와 동일) 
- * 4. 고용보험: 급여 × 0.9% (근로자와 동일)
- * 5. 산재보험: 급여 × 0.7% (회사만 부담, 업종별 차이 있음)
  * 
- * 회사 총 부담률: 약 9.7% (국민연금 상한 미적용 시)
+ * 임원은 고용보험과 산재보험 제외
+ * 회사 총 부담률: 약 8.0% (국민연금 상한 미적용 시)
  * 
  * @param {number} totalSalary - 연간 총급여액
- * @returns {object} - 회사부담 4대보험료 총액과 계산 설명이 포함된 객체
+ * @returns {object} - 회사부담 사회보험료 총액과 계산 설명이 포함된 객체
  */
 function calculateCompanySocialInsurance(totalSalary) {
     const pension = SOCIAL_INSURANCE_2025.nationalPension;
     const health = SOCIAL_INSURANCE_2025.healthInsurance;
-    const employment = SOCIAL_INSURANCE_2025.employmentInsurance;
-    const workers = SOCIAL_INSURANCE_2025.workersCompensation;
     
     // 국민연금: 상한액 적용
     const pensionableIncome = Math.min(totalSalary, pension.maxIncome);
@@ -404,21 +398,15 @@ function calculateCompanySocialInsurance(totalSalary) {
     // 장기요양보험료 (회사 부담분)
     const companyLongTermCare = companyHealthInsurance * health.longTermCareRate;
     
-    // 고용보험료 (회사 부담분)
-    const companyEmploymentInsurance = totalSalary * employment.employerRate;
-    
-    // 산재보험료 (회사만 부담)
-    const workersCompensationFee = totalSalary * workers.employerRate;
-    
-    const total = companyNationalPension + companyHealthInsurance + companyLongTermCare + 
-           companyEmploymentInsurance + workersCompensationFee;
+    // 임원은 고용보험, 산재보험 제외
+    const total = companyNationalPension + companyHealthInsurance + companyLongTermCare;
     
     // 계산 설명
     const pensionExplanation = pensionableIncome < totalSalary 
         ? `국민연금: ${formatCurrency(pensionableIncome)}(상한) × 4.5%` 
         : `국민연금: ${formatCurrency(totalSalary)} × 4.5%`;
     
-    const explanation = `${pensionExplanation} + 건강보험: ${formatCurrency(totalSalary)} × 3.55% + 장기요양: 건강보험료 × 12.95% + 고용보험: ${formatCurrency(totalSalary)} × 0.9% + 산재보험: ${formatCurrency(totalSalary)} × 0.7%`;
+    const explanation = `${pensionExplanation} + 건강보험: ${formatCurrency(totalSalary)} × 3.55% + 장기요양: 건강보험료 × 12.95% (임원: 고용산재보험 제외)`;
     
     return {
         amount: total,
@@ -796,8 +784,8 @@ function calculateSingleCase(salary, dividend, familyCount, deductionType) {
     result.companySocialInsurance = companySocialInsuranceDetail.amount;
     result.companySocialInsuranceExplanation = companySocialInsuranceDetail.explanation;
     
-    // 10. 총 개인부담액 (개인소득세 + 4대보험료)
-    result.totalPersonalBurden = result.finalTax + result.socialInsurance;
+    // 10. 총 개인부담액 (개인소득세 + 개인부담 사회보험료 + 회사부담분 사회보험료)
+    result.totalPersonalBurden = result.finalTax + result.socialInsurance + result.companySocialInsurance;
     
     // 11. 순 세금효과 (총 개인부담액 - 법인세절감)
     result.netTaxEffect = result.totalPersonalBurden - result.corporateTaxSaving;
@@ -1831,8 +1819,8 @@ function calculateAdditionalPersonCase(salary, dividend) {
     result.corporateTaxSaving = calculateCorporateTax(totalLaborCost);
     result.companySocialInsurance = companySocialInsuranceDetail.amount;
     
-    // 10. 총 개인부담액
-    result.totalPersonalBurden = result.finalTax + result.socialInsurance;
+    // 10. 총 개인부담액 (개인소득세 + 개인부담 사회보험료 + 회사부담분 사회보험료)
+    result.totalPersonalBurden = result.finalTax + result.socialInsurance + result.companySocialInsurance;
     
     // 11. 순 세금효과
     result.netTaxEffect = result.totalPersonalBurden - result.corporateTaxSaving;
