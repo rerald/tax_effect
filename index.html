@@ -3,874 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>법인 소득처분 세금 효과 분석 (2025년 기준)</title>
+    <title>세금 절세 시뮬레이션 대시보드</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        .dashboard-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .dashboard-header {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 48px 24px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 40px;
+            backdrop-filter: blur(10px);
+        }
+        .dashboard-header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 12px;
+        }
+        .dashboard-header .subtitle {
+            font-size: 1rem;
+            color: #7f8c8d;
+            font-weight: 400;
+        }
+        .dashboard-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+        }
+        .dashboard-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        .dashboard-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.15);
+        }
+        .dashboard-card h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 12px;
+        }
+        .dashboard-card p {
+            font-size: 0.95rem;
+            color: #7f8c8d;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        .dashboard-card .card-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 500;
+            font-size: 0.95rem;
+            border-radius: 10px;
+            transition: opacity 0.2s ease;
+        }
+        .dashboard-card:hover .card-btn {
+            opacity: 0.95;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <header class="header">
-            <h1>법인 소득처분 세금 효과 분석 시스템 (2025년 기준)</h1>
-            <p class="subtitle">2025년 최신 세율 적용 | 급여, 상여, 배당 등 다양한 소득처분 방식에 따른 세금 부담 변화를 분석합니다</p>
-            <p class="subtitle" style="margin-top: 0.5rem;"><a href="venture.html" style="color: #2563eb; text-decoration: underline;">벤처투자 소득공제 절세 시뮬레이터 →</a></p>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>세금 절세 시뮬레이션 대시보드</h1>
+            <p class="subtitle">원하는 시뮬레이션 도구를 선택하여 세금 효과를 분석해 보세요</p>
         </header>
 
-        <div class="content">
-            <!-- 입력 섹션 -->
-            <div class="input-section">
-                <h2>기본 정보 입력</h2>
-                
-                <div class="input-group">
-                    <label for="company-name">법인명</label>
-                    <input type="text" id="company-name" placeholder="예: 세무법인청년들">
-                </div>
-
-                <div class="input-group">
-                    <label for="person-name">소득처분 대상자</label>
-                    <input type="text" id="person-name" placeholder="예: 이규상">
-                </div>
-
-                <div class="input-group">
-                    <label for="total-amount">총 처분 가능 금액 (원)</label>
-                    <input type="text" id="total-amount" placeholder="150,000,000" class="currency-input" style="text-align: left;">
-                </div>
-
-                <div class="input-group">
-                    <label for="additional-persons">추가 인원 수</label>
-                    <select id="additional-persons" onchange="handleAdditionalPersonsChange()">
-                        <option value="0">0명 (본인만)</option>
-                        <option value="1">1명</option>
-                        <option value="2">2명</option>
-                        <option value="3">3명</option>
-                    </select>
-                </div>
-
-                <!-- 지분율 설정 영역 -->
-                <div id="equity-section" style="display: none;">
-                    <h3>지분율 설정</h3>
-                    <p class="equity-description">각 인원별 지분율을 입력하세요. 본인의 급여액에 비례하여 추가 인원들의 배당이 자동 계산됩니다.</p>
-                    
-                    <div class="equity-grid" id="equity-grid">
-                        <div class="equity-item">
-                            <label for="equity-main">본인 지분율 (%)</label>
-                            <input type="number" id="equity-main" min="0" max="100" value="100" onchange="handleEquityChange('equity-main')">
-                        </div>
-                    </div>
-                    
-                    <div class="equity-total">
-                        <span>총 지분율: <span id="total-equity">100</span>%</span>
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- 시나리오 설정 섹션 -->
-            <div class="scenario-section">
-                <div class="section-header">
-                    <h2>시나리오 설정</h2>
-                    <div class="section-buttons">
-                        <button class="equity-dividend-button" onclick="setAllDividendsByEquity()" title="지분율 기반 배당 설정">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M12 2L15.09 8.26L22 9L17 14L18.18 21L12 17.77L5.82 21L7 14L2 9L8.91 8.26L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                            지분율 기반 배당 설정
-                        </button>
-                        <button class="reset-button" onclick="resetToInitialValues()" title="초기값으로 리셋">
-                            <svg class="reset-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M4 12C4 7.58172 7.58172 4 12 4C16.4183 4 20 7.58172 20 12C20 16.4183 16.4183 20 12 20C9.05801 20 6.51244 18.5447 5.12419 16.3297" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                <path d="M2 12L5 9L8 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-                <p class="scenario-description">
-                    <strong>💡 세금 최적화 전략 가이드</strong><br>
-                    총 처분 가능 금액을 기준으로 5가지 전략적 케이스를 제공합니다.<br>
-                    <span style="color: #e74c3c; font-weight: 500;">케이스 1</span>: 급여 중심 (단순하지만 세금 부담 높음)<br>
-                    <span style="color: #f39c12; font-weight: 500;">케이스 2-4</span>: 단계적 배당 활용 (세금 효율성 증가)<br>
-                    <span style="color: #27ae60; font-weight: 500;">케이스 5</span>: 배당 중심 (최대 세금 절약 가능)<br>
-                    <em>추가 인원 설정 시 "지분율 기반 배당 설정" 버튼을 활용하여 보수적 최적화 전략을 적용할 수 있습니다.</em>
-                </p>
-                
-                <div class="scenario-table-container">
-                    <table class="scenario-table">
-                        <thead>
-                            <tr>
-                                <th class="row-header">구분</th>
-                                <th class="case-header">CASE 1<br><span class="case-subtitle">급여 중심</span></th>
-                                <th class="case-header">CASE 2<br><span class="case-subtitle">혼합 1</span></th>
-                                <th class="case-header">CASE 3<br><span class="case-subtitle">혼합 2</span></th>
-                                <th class="case-header">CASE 4<br><span class="case-subtitle">혼합 3</span></th>
-                                <th class="case-header">CASE 5<br><span class="case-subtitle">배당 중심</span></th>
-                            </tr>
-                        </thead>
-                        <tbody id="scenario-tbody">
-                            <tr>
-                                <td class="row-label">본인급여액 (원)</td>
-                                <td>
-                                    <div class="input-with-button">
-                                        <input type="text" id="case1-salary" placeholder="130,000,000" class="currency-input table-input main-person-input">
-                                        <button class="max-button" onclick="fillRemainingAmount(1, 'salary')" title="남은 전액 입력">전액</button>
-                                        <button class="diff-button" onclick="fillDifferenceAmount(1, 'salary')" title="차액 입력">차액</button>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="input-with-button">
-                                        <input type="text" id="case2-salary" placeholder="110,000,000" class="currency-input table-input main-person-input">
-                                        <button class="max-button" onclick="fillRemainingAmount(2, 'salary')" title="남은 전액 입력">전액</button>
-                                        <button class="diff-button" onclick="fillDifferenceAmount(2, 'salary')" title="차액 입력">차액</button>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="input-with-button">
-                                        <input type="text" id="case3-salary" placeholder="90,000,000" class="currency-input table-input main-person-input">
-                                        <button class="max-button" onclick="fillRemainingAmount(3, 'salary')" title="남은 전액 입력">전액</button>
-                                        <button class="diff-button" onclick="fillDifferenceAmount(3, 'salary')" title="차액 입력">차액</button>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="input-with-button">
-                                        <input type="text" id="case4-salary" placeholder="70,000,000" class="currency-input table-input main-person-input">
-                                        <button class="max-button" onclick="fillRemainingAmount(4, 'salary')" title="남은 전액 입력">전액</button>
-                                        <button class="diff-button" onclick="fillDifferenceAmount(4, 'salary')" title="차액 입력">차액</button>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="input-with-button">
-                                        <input type="text" id="case5-salary" placeholder="60,000,000" class="currency-input table-input main-person-input">
-                                        <button class="max-button" onclick="fillRemainingAmount(5, 'salary')" title="남은 전액 입력">전액</button>
-                                        <button class="diff-button" onclick="fillDifferenceAmount(5, 'salary')" title="차액 입력">차액</button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="row-label">본인배당액 (원)</td>
-                                <td>
-                                    <div class="input-with-button">
-                                        <input type="text" id="case1-dividend" placeholder="0" class="currency-input table-input main-person-input">
-                                        <button class="max-button" onclick="fillRemainingAmount(1, 'dividend')" title="남은 전액 입력">전액</button>
-                                        <button class="diff-button" onclick="fillDifferenceAmount(1, 'dividend')" title="차액 입력">차액</button>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="input-with-button">
-                                        <input type="text" id="case2-dividend" placeholder="20,000,000" class="currency-input table-input main-person-input">
-                                        <button class="max-button" onclick="fillRemainingAmount(2, 'dividend')" title="남은 전액 입력">전액</button>
-                                        <button class="diff-button" onclick="fillDifferenceAmount(2, 'dividend')" title="차액 입력">차액</button>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="input-with-button">
-                                        <input type="text" id="case3-dividend" placeholder="40,000,000" class="currency-input table-input main-person-input">
-                                        <button class="max-button" onclick="fillRemainingAmount(3, 'dividend')" title="남은 전액 입력">전액</button>
-                                        <button class="diff-button" onclick="fillDifferenceAmount(3, 'dividend')" title="차액 입력">차액</button>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="input-with-button">
-                                        <input type="text" id="case4-dividend" placeholder="60,000,000" class="currency-input table-input main-person-input">
-                                        <button class="max-button" onclick="fillRemainingAmount(4, 'dividend')" title="남은 전액 입력">전액</button>
-                                        <button class="diff-button" onclick="fillDifferenceAmount(4, 'dividend')" title="차액 입력">차액</button>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="input-with-button">
-                                        <input type="text" id="case5-dividend" placeholder="70,000,000" class="currency-input table-input main-person-input">
-                                        <button class="max-button" onclick="fillRemainingAmount(5, 'dividend')" title="남은 전액 입력">전액</button>
-                                        <button class="diff-button" onclick="fillDifferenceAmount(5, 'dividend')" title="차액 입력">차액</button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <!-- 추가 인원 행들이 여기에 동적으로 삽입됩니다 -->
-                            <!-- 추가 인원들이 여기에 동적으로 삽입됩니다 -->
-                            <tr class="total-row">
-                                <td class="row-label">총 금액</td>
-                                <td><span id="case1-total" class="total-amount">130,000,000</span></td>
-                                <td><span id="case2-total" class="total-amount">130,000,000</span></td>
-                                <td><span id="case3-total" class="total-amount">130,000,000</span></td>
-                                <td><span id="case4-total" class="total-amount">130,000,000</span></td>
-                                <td><span id="case5-total" class="total-amount">130,000,000</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <button class="calculate-button" onclick="calculateTaxEffect()">세금 효과 계산하기</button>
-            </div>
-
-            <!-- 결과 섹션 -->
-            <div class="results-section" id="results-section" style="display: none;">
-                <h2>세금 효과 분석 결과</h2>
-                
-                <!-- 요약 테이블 -->
-                <div class="summary-table">
-                    <h3>케이스별 비교 요약</h3>
-                    <table id="summary-table">
-                        <thead>
-                            <tr>
-                                <th>구분</th>
-                                <th>CASE 1</th>
-                                <th>CASE 2</th>
-                                <th>CASE 3</th>
-                                <th>CASE 4</th>
-                                <th>CASE 5</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>급여액</td>
-                                <td id="summary-salary-1">-</td>
-                                <td id="summary-salary-2">-</td>
-                                <td id="summary-salary-3">-</td>
-                                <td id="summary-salary-4">-</td>
-                                <td id="summary-salary-5">-</td>
-                            </tr>
-                            <tr>
-                                <td>배당액</td>
-                                <td id="summary-dividend-1">-</td>
-                                <td id="summary-dividend-2">-</td>
-                                <td id="summary-dividend-3">-</td>
-                                <td id="summary-dividend-4">-</td>
-                                <td id="summary-dividend-5">-</td>
-                            </tr>
-                            <tr>
-                                <td>개인 소득세</td>
-                                <td id="summary-personal-tax-1">-</td>
-                                <td id="summary-personal-tax-2">-</td>
-                                <td id="summary-personal-tax-3">-</td>
-                                <td id="summary-personal-tax-4">-</td>
-                                <td id="summary-personal-tax-5">-</td>
-                            </tr>
-                            <tr>
-                                <td>4대보험료</td>
-                                <td id="summary-social-insurance-1">-</td>
-                                <td id="summary-social-insurance-2">-</td>
-                                <td id="summary-social-insurance-3">-</td>
-                                <td id="summary-social-insurance-4">-</td>
-                                <td id="summary-social-insurance-5">-</td>
-                            </tr>
-                            <tr class="highlight-row">
-                                <td><strong>총 개인부담액 + 회사부담분 사회보험료</strong></td>
-                                <td id="summary-total-personal-burden-1">-</td>
-                                <td id="summary-total-personal-burden-2">-</td>
-                                <td id="summary-total-personal-burden-3">-</td>
-                                <td id="summary-total-personal-burden-4">-</td>
-                                <td id="summary-total-personal-burden-5">-</td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    법인세 절감
-                                    <div class="corp-tax-explanation">급여 및 회사부담분 사회보험료는 비용으로 인정되어 법인세를 절감시킵니다</div>
-                                </td>
-                                <td id="summary-corp-saving-1">-</td>
-                                <td id="summary-corp-saving-2">-</td>
-                                <td id="summary-corp-saving-3">-</td>
-                                <td id="summary-corp-saving-4">-</td>
-                                <td id="summary-corp-saving-5">-</td>
-                            </tr>
-                            <tr class="total-row">
-                                <td>실질 부담 총세금</td>
-                                <td id="summary-net-effect-1">-</td>
-                                <td id="summary-net-effect-2">-</td>
-                                <td id="summary-net-effect-3">-</td>
-                                <td id="summary-net-effect-4">-</td>
-                                <td id="summary-net-effect-5">-</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- 상세 분석 -->
-                <div class="detailed-analysis">
-                    <h3>상세 세금 계산</h3>
-                    <div class="detail-tabs">
-                        <button class="tab-button active" onclick="showDetail('detail1')">CASE 1</button>
-                        <button class="tab-button" onclick="showDetail('detail2')">CASE 2</button>
-                        <button class="tab-button" onclick="showDetail('detail3')">CASE 3</button>
-                        <button class="tab-button" onclick="showDetail('detail4')">CASE 4</button>
-                        <button class="tab-button" onclick="showDetail('detail5')">CASE 5</button>
-                    </div>
-
-                    <div id="detail1" class="detail-content active">
-                        <div class="detail-cards">
-                            <div class="detail-card">
-                                <h4>근로소득 계산</h4>
-                                <div class="calculation-item">
-                                    <span>총급여액:</span>
-                                    <span id="detail1-total-salary">-</span>
-                                </div>
-                                <div class="calculation-item calculation-item-with-explanation">
-                                    <div class="main-calculation">
-                                        <span>근로소득공제:</span>
-                                        <span id="detail1-salary-deduction">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail1-salary-deduction-explanation">-</div>
-                                </div>
-                                <div class="calculation-item">
-                                    <span>근로소득금액:</span>
-                                    <span id="detail1-salary-income">-</span>
-                                </div>
-                            </div>
-
-                            <div class="detail-card">
-                                <h4>4대보험료 계산</h4>
-                                <div class="calculation-item calculation-item-with-explanation tooltip-container">
-                                    <div class="main-calculation">
-                                        <span>근로자 부담분:</span>
-                                        <span id="detail1-social-insurance" class="tooltip-trigger">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail1-social-insurance-explanation">-</div>
-                                </div>
-                                <div class="calculation-item calculation-item-with-explanation">
-                                    <div class="main-calculation">
-                                        <span>회사 부담분:</span>
-                                        <span id="detail1-company-insurance">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail1-company-insurance-explanation">-</div>
-                                </div>
-                            </div>
-
-                            <div class="detail-card">
-                                <h4>배당소득 계산</h4>
-                                <div class="calculation-item">
-                                    <span>배당소득:</span>
-                                    <span id="detail1-dividend-income">-</span>
-                                </div>
-                                <div class="calculation-item calculation-item-with-explanation">
-                                    <div class="main-calculation">
-                                        <span>Gross Up:</span>
-                                        <span id="detail1-gross-up">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail1-gross-up-explanation">-</div>
-                                </div>
-                                <div class="calculation-item calculation-item-with-explanation">
-                                    <div class="main-calculation">
-                                        <span>배당세액공제:</span>
-                                        <span id="detail1-dividend-credit">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail1-dividend-credit-explanation">-</div>
-                                </div>
-                            </div>
-
-                            <div class="detail-card">
-                                <h4>종합소득세 계산</h4>
-                                <div class="calculation-item">
-                                    <span>종합소득금액:</span>
-                                    <span id="detail1-total-income">-</span>
-                                </div>
-                                <div class="calculation-item calculation-item-with-explanation">
-                                    <div class="main-calculation">
-                                        <span>소득공제:</span>
-                                        <span id="detail1-income-deduction">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail1-income-deduction-explanation">-</div>
-                                </div>
-                                <div class="calculation-item">
-                                    <span>과세표준:</span>
-                                    <span id="detail1-taxable-income">-</span>
-                                </div>
-                                <div class="calculation-item">
-                                    <span>산출세액:</span>
-                                    <span id="detail1-calculated-tax">-</span>
-                                </div>
-                                <div class="calculation-item tax-credit-item">
-                                    <span>(-) 배당세액공제:</span>
-                                    <span id="detail1-dividend-tax-credit">-</span>
-                                </div>
-                                <div class="calculation-item tax-credit-item">
-                                    <span>(-) 근로소득세액공제:</span>
-                                    <span id="detail1-earned-income-tax-credit">-</span>
-                                </div>
-                                <div class="calculation-item tax-credit-item">
-                                    <span>(-) 표준/특별세액공제:</span>
-                                    <span id="detail1-standard-tax-credit">-</span>
-                                </div>
-                                <div class="calculation-item tax-credit-item">
-                                    <span>(-) 연금계좌세액공제:</span>
-                                    <span id="detail1-pension-tax-credit">-</span>
-                                </div>
-                                <div class="calculation-item total-credit-item">
-                                    <span>= 총 세액공제:</span>
-                                    <span id="detail1-total-tax-credit">-</span>
-                                </div>
-                                <div class="calculation-item final-tax-item">
-                                    <span>결정세액:</span>
-                                    <span id="detail1-final-tax">-</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 나머지 케이스들도 동일한 구조로 복사 -->
-                    <div id="detail2" class="detail-content">
-                        <div class="detail-cards">
-                            <div class="detail-card">
-                                <h4>근로소득 계산</h4>
-                                <div class="calculation-item">
-                                    <span>총급여액:</span>
-                                    <span id="detail2-total-salary">-</span>
-                                </div>
-                                <div class="calculation-item calculation-item-with-explanation">
-                                    <div class="main-calculation">
-                                        <span>근로소득공제:</span>
-                                        <span id="detail2-salary-deduction">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail2-salary-deduction-explanation">-</div>
-                                </div>
-                                <div class="calculation-item">
-                                    <span>근로소득금액:</span>
-                                    <span id="detail2-salary-income">-</span>
-                                </div>
-                            </div>
-
-                            <div class="detail-card">
-                                <h4>4대보험료 계산</h4>
-                                <div class="calculation-item calculation-item-with-explanation tooltip-container">
-                                    <div class="main-calculation">
-                                        <span>근로자 부담분:</span>
-                                        <span id="detail2-social-insurance" class="tooltip-trigger">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail2-social-insurance-explanation">-</div>
-                                </div>
-                                <div class="calculation-item calculation-item-with-explanation">
-                                    <div class="main-calculation">
-                                        <span>회사 부담분:</span>
-                                        <span id="detail2-company-insurance">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail2-company-insurance-explanation">-</div>
-                                </div>
-                            </div>
-
-                            <div class="detail-card">
-                                <h4>배당소득 계산</h4>
-                                <div class="calculation-item">
-                                    <span>배당소득:</span>
-                                    <span id="detail2-dividend-income">-</span>
-                                </div>
-                                <div class="calculation-item calculation-item-with-explanation">
-                                    <div class="main-calculation">
-                                        <span>Gross Up:</span>
-                                        <span id="detail2-gross-up">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail2-gross-up-explanation">-</div>
-                                </div>
-                                <div class="calculation-item calculation-item-with-explanation">
-                                    <div class="main-calculation">
-                                        <span>배당세액공제:</span>
-                                        <span id="detail2-dividend-credit">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail2-dividend-credit-explanation">-</div>
-                                </div>
-                            </div>
-
-                            <div class="detail-card">
-                                <h4>종합소득세 계산</h4>
-                                <div class="calculation-item">
-                                    <span>종합소득금액:</span>
-                                    <span id="detail2-total-income">-</span>
-                                </div>
-                                <div class="calculation-item calculation-item-with-explanation">
-                                    <div class="main-calculation">
-                                        <span>소득공제:</span>
-                                        <span id="detail2-income-deduction">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail2-income-deduction-explanation">-</div>
-                                </div>
-                                <div class="calculation-item">
-                                    <span>과세표준:</span>
-                                    <span id="detail2-taxable-income">-</span>
-                                </div>
-                                <div class="calculation-item">
-                                    <span>산출세액:</span>
-                                    <span id="detail2-calculated-tax">-</span>
-                                </div>
-                                <div class="calculation-item tax-credit-item">
-                                    <span>(-) 배당세액공제:</span>
-                                    <span id="detail2-dividend-tax-credit">-</span>
-                                </div>
-                                <div class="calculation-item tax-credit-item">
-                                    <span>(-) 근로소득세액공제:</span>
-                                    <span id="detail2-earned-income-tax-credit">-</span>
-                                </div>
-                                <div class="calculation-item tax-credit-item">
-                                    <span>(-) 표준/특별세액공제:</span>
-                                    <span id="detail2-standard-tax-credit">-</span>
-                                </div>
-                                <div class="calculation-item tax-credit-item">
-                                    <span>(-) 연금계좌세액공제:</span>
-                                    <span id="detail2-pension-tax-credit">-</span>
-                                </div>
-                                <div class="calculation-item total-credit-item">
-                                    <span>= 총 세액공제:</span>
-                                    <span id="detail2-total-tax-credit">-</span>
-                                </div>
-                                <div class="calculation-item final-tax-item">
-                                    <span>결정세액:</span>
-                                    <span id="detail2-final-tax">-</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="detail3" class="detail-content">
-                        <div class="detail-cards">
-                            <div class="detail-card">
-                                <h4>근로소득 계산</h4>
-                                <div class="calculation-item">
-                                    <span>총급여액:</span>
-                                    <span id="detail3-total-salary">-</span>
-                                </div>
-                                <div class="calculation-item calculation-item-with-explanation">
-                                    <div class="main-calculation">
-                                        <span>근로소득공제:</span>
-                                        <span id="detail3-salary-deduction">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail3-salary-deduction-explanation">-</div>
-                                </div>
-                                <div class="calculation-item">
-                                    <span>근로소득금액:</span>
-                                    <span id="detail3-salary-income">-</span>
-                                </div>
-                            </div>
-
-                            <div class="detail-card">
-                                <h4>4대보험료 계산</h4>
-                                <div class="calculation-item calculation-item-with-explanation tooltip-container">
-                                    <div class="main-calculation">
-                                        <span>근로자 부담분:</span>
-                                        <span id="detail3-social-insurance" class="tooltip-trigger">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail3-social-insurance-explanation">-</div>
-                                </div>
-                                <div class="calculation-item calculation-item-with-explanation">
-                                    <div class="main-calculation">
-                                        <span>회사 부담분:</span>
-                                        <span id="detail3-company-insurance">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail3-company-insurance-explanation">-</div>
-                                </div>
-                            </div>
-
-                            <div class="detail-card">
-                                <h4>배당소득 계산</h4>
-                                <div class="calculation-item">
-                                    <span>배당소득:</span>
-                                    <span id="detail3-dividend-income">-</span>
-                                </div>
-                                <div class="calculation-item calculation-item-with-explanation">
-                                    <div class="main-calculation">
-                                        <span>Gross Up:</span>
-                                        <span id="detail3-gross-up">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail3-gross-up-explanation">-</div>
-                                </div>
-                                <div class="calculation-item calculation-item-with-explanation">
-                                    <div class="main-calculation">
-                                        <span>배당세액공제:</span>
-                                        <span id="detail3-dividend-credit">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail3-dividend-credit-explanation">-</div>
-                                </div>
-                            </div>
-
-                            <div class="detail-card">
-                                <h4>종합소득세 계산</h4>
-                                <div class="calculation-item">
-                                    <span>종합소득금액:</span>
-                                    <span id="detail3-total-income">-</span>
-                                </div>
-                                <div class="calculation-item calculation-item-with-explanation">
-                                    <div class="main-calculation">
-                                        <span>소득공제:</span>
-                                        <span id="detail3-income-deduction">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail3-income-deduction-explanation">-</div>
-                                </div>
-                                <div class="calculation-item">
-                                    <span>과세표준:</span>
-                                    <span id="detail3-taxable-income">-</span>
-                                </div>
-                                <div class="calculation-item">
-                                    <span>산출세액:</span>
-                                    <span id="detail3-calculated-tax">-</span>
-                                </div>
-                                <div class="calculation-item tax-credit-item">
-                                    <span>(-) 배당세액공제:</span>
-                                    <span id="detail3-dividend-tax-credit">-</span>
-                                </div>
-                                <div class="calculation-item tax-credit-item">
-                                    <span>(-) 근로소득세액공제:</span>
-                                    <span id="detail3-earned-income-tax-credit">-</span>
-                                </div>
-                                <div class="calculation-item tax-credit-item">
-                                    <span>(-) 표준/특별세액공제:</span>
-                                    <span id="detail3-standard-tax-credit">-</span>
-                                </div>
-                                <div class="calculation-item tax-credit-item">
-                                    <span>(-) 연금계좌세액공제:</span>
-                                    <span id="detail3-pension-tax-credit">-</span>
-                                </div>
-                                <div class="calculation-item total-credit-item">
-                                    <span>= 총 세액공제:</span>
-                                    <span id="detail3-total-tax-credit">-</span>
-                                </div>
-                                <div class="calculation-item final-tax-item">
-                                    <span>결정세액:</span>
-                                    <span id="detail3-final-tax">-</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="detail4" class="detail-content">
-                        <div class="detail-cards">
-                            <div class="detail-card">
-                                <h4>근로소득 계산</h4>
-                                <div class="calculation-item">
-                                    <span>총급여액:</span>
-                                    <span id="detail4-total-salary">-</span>
-                                </div>
-                                <div class="calculation-item calculation-item-with-explanation">
-                                    <div class="main-calculation">
-                                        <span>근로소득공제:</span>
-                                        <span id="detail4-salary-deduction">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail4-salary-deduction-explanation">-</div>
-                                </div>
-                                <div class="calculation-item">
-                                    <span>근로소득금액:</span>
-                                    <span id="detail4-salary-income">-</span>
-                                </div>
-                            </div>
-
-                            <div class="detail-card">
-                                <h4>4대보험료 계산</h4>
-                                <div class="calculation-item calculation-item-with-explanation tooltip-container">
-                                    <div class="main-calculation">
-                                        <span>근로자 부담분:</span>
-                                        <span id="detail4-social-insurance" class="tooltip-trigger">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail4-social-insurance-explanation">-</div>
-                                </div>
-                                <div class="calculation-item calculation-item-with-explanation">
-                                    <div class="main-calculation">
-                                        <span>회사 부담분:</span>
-                                        <span id="detail4-company-insurance">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail4-company-insurance-explanation">-</div>
-                                </div>
-                            </div>
-
-                            <div class="detail-card">
-                                <h4>배당소득 계산</h4>
-                                <div class="calculation-item">
-                                    <span>배당소득:</span>
-                                    <span id="detail4-dividend-income">-</span>
-                                </div>
-                                <div class="calculation-item calculation-item-with-explanation">
-                                    <div class="main-calculation">
-                                        <span>Gross Up:</span>
-                                        <span id="detail4-gross-up">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail4-gross-up-explanation">-</div>
-                                </div>
-                                <div class="calculation-item calculation-item-with-explanation">
-                                    <div class="main-calculation">
-                                        <span>배당세액공제:</span>
-                                        <span id="detail4-dividend-credit">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail4-dividend-credit-explanation">-</div>
-                                </div>
-                            </div>
-
-                            <div class="detail-card">
-                                <h4>종합소득세 계산</h4>
-                                <div class="calculation-item">
-                                    <span>종합소득금액:</span>
-                                    <span id="detail4-total-income">-</span>
-                                </div>
-                                <div class="calculation-item calculation-item-with-explanation">
-                                    <div class="main-calculation">
-                                        <span>소득공제:</span>
-                                        <span id="detail4-income-deduction">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail4-income-deduction-explanation">-</div>
-                                </div>
-                                <div class="calculation-item">
-                                    <span>과세표준:</span>
-                                    <span id="detail4-taxable-income">-</span>
-                                </div>
-                                <div class="calculation-item">
-                                    <span>산출세액:</span>
-                                    <span id="detail4-calculated-tax">-</span>
-                                </div>
-                                <div class="calculation-item tax-credit-item">
-                                    <span>(-) 배당세액공제:</span>
-                                    <span id="detail4-dividend-tax-credit">-</span>
-                                </div>
-                                <div class="calculation-item tax-credit-item">
-                                    <span>(-) 근로소득세액공제:</span>
-                                    <span id="detail4-earned-income-tax-credit">-</span>
-                                </div>
-                                <div class="calculation-item tax-credit-item">
-                                    <span>(-) 표준/특별세액공제:</span>
-                                    <span id="detail4-standard-tax-credit">-</span>
-                                </div>
-                                <div class="calculation-item tax-credit-item">
-                                    <span>(-) 연금계좌세액공제:</span>
-                                    <span id="detail4-pension-tax-credit">-</span>
-                                </div>
-                                <div class="calculation-item total-credit-item">
-                                    <span>= 총 세액공제:</span>
-                                    <span id="detail4-total-tax-credit">-</span>
-                                </div>
-                                <div class="calculation-item final-tax-item">
-                                    <span>결정세액:</span>
-                                    <span id="detail4-final-tax">-</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="detail5" class="detail-content">
-                        <div class="detail-cards">
-                            <div class="detail-card">
-                                <h4>근로소득 계산</h4>
-                                <div class="calculation-item">
-                                    <span>총급여액:</span>
-                                    <span id="detail5-total-salary">-</span>
-                                </div>
-                                <div class="calculation-item calculation-item-with-explanation">
-                                    <div class="main-calculation">
-                                        <span>근로소득공제:</span>
-                                        <span id="detail5-salary-deduction">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail5-salary-deduction-explanation">-</div>
-                                </div>
-                                <div class="calculation-item">
-                                    <span>근로소득금액:</span>
-                                    <span id="detail5-salary-income">-</span>
-                                </div>
-                            </div>
-
-                            <div class="detail-card">
-                                <h4>4대보험료 계산</h4>
-                                <div class="calculation-item calculation-item-with-explanation tooltip-container">
-                                    <div class="main-calculation">
-                                        <span>근로자 부담분:</span>
-                                        <span id="detail5-social-insurance" class="tooltip-trigger">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail5-social-insurance-explanation">-</div>
-                                </div>
-                                <div class="calculation-item calculation-item-with-explanation">
-                                    <div class="main-calculation">
-                                        <span>회사 부담분:</span>
-                                        <span id="detail5-company-insurance">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail5-company-insurance-explanation">-</div>
-                                </div>
-                            </div>
-
-                            <div class="detail-card">
-                                <h4>배당소득 계산</h4>
-                                <div class="calculation-item">
-                                    <span>배당소득:</span>
-                                    <span id="detail5-dividend-income">-</span>
-                                </div>
-                                <div class="calculation-item calculation-item-with-explanation">
-                                    <div class="main-calculation">
-                                        <span>Gross Up:</span>
-                                        <span id="detail5-gross-up">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail5-gross-up-explanation">-</div>
-                                </div>
-                                <div class="calculation-item calculation-item-with-explanation">
-                                    <div class="main-calculation">
-                                        <span>배당세액공제:</span>
-                                        <span id="detail5-dividend-credit">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail5-dividend-credit-explanation">-</div>
-                                </div>
-                            </div>
-
-                            <div class="detail-card">
-                                <h4>종합소득세 계산</h4>
-                                <div class="calculation-item">
-                                    <span>종합소득금액:</span>
-                                    <span id="detail5-total-income">-</span>
-                                </div>
-                                <div class="calculation-item calculation-item-with-explanation">
-                                    <div class="main-calculation">
-                                        <span>소득공제:</span>
-                                        <span id="detail5-income-deduction">-</span>
-                                    </div>
-                                    <div class="calculation-explanation" id="detail5-income-deduction-explanation">-</div>
-                                </div>
-                                <div class="calculation-item">
-                                    <span>과세표준:</span>
-                                    <span id="detail5-taxable-income">-</span>
-                                </div>
-                                <div class="calculation-item">
-                                    <span>산출세액:</span>
-                                    <span id="detail5-calculated-tax">-</span>
-                                </div>
-                                <div class="calculation-item tax-credit-item">
-                                    <span>(-) 배당세액공제:</span>
-                                    <span id="detail5-dividend-tax-credit">-</span>
-                                </div>
-                                <div class="calculation-item tax-credit-item">
-                                    <span>(-) 근로소득세액공제:</span>
-                                    <span id="detail5-earned-income-tax-credit">-</span>
-                                </div>
-                                <div class="calculation-item tax-credit-item">
-                                    <span>(-) 표준/특별세액공제:</span>
-                                    <span id="detail5-standard-tax-credit">-</span>
-                                </div>
-                                <div class="calculation-item tax-credit-item">
-                                    <span>(-) 연금계좌세액공제:</span>
-                                    <span id="detail5-pension-tax-credit">-</span>
-                                </div>
-                                <div class="calculation-item total-credit-item">
-                                    <span>= 총 세액공제:</span>
-                                    <span id="detail5-total-tax-credit">-</span>
-                                </div>
-                                <div class="calculation-item final-tax-item">
-                                    <span>결정세액:</span>
-                                    <span id="detail5-final-tax">-</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 최적 추천 -->
-                <div class="recommendation">
-                    <h3>최적 소득처분 방식 추천</h3>
-                    <div class="recommendation-card" id="recommendation-card">
-                        <div class="recommendation-content">
-                            <h4 id="best-case">-</h4>
-                            <p id="recommendation-reason">계산 후 가장 유리한 케이스를 추천해드립니다.</p>
-                            <div class="recommendation-details">
-                                <div class="recommendation-item">
-                                    <span>급여액:</span>
-                                    <span id="rec-salary">-</span>
-                                </div>
-                                <div class="recommendation-item">
-                                    <span>배당액:</span>
-                                    <span id="rec-dividend">-</span>
-                                </div>
-                                <div class="recommendation-item">
-                                    <span>실질 부담 총세금:</span>
-                                    <span id="rec-savings">-</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="dashboard-cards">
+            <a href="net-salary.html" class="dashboard-card">
+                <h3>넷급여 역산 계산기</h3>
+                <p>목표 세후 실수령액에 맞는 세전 급여와 사업주 총 부담액을 역산합니다. 근로계약서 작성용 데이터 제공.</p>
+                <span class="card-btn">시작하기 →</span>
+            </a>
+            <a href="corporate-income.html" class="dashboard-card">
+                <h3>법인소득처분 세금효과</h3>
+                <p>급여, 상여, 배당 등 소득처분 방식별 세금 부담을 비교 분석합니다. 2025년 최신 세율 적용.</p>
+                <span class="card-btn">시작하기 →</span>
+            </a>
+            <a href="venture.html" class="dashboard-card">
+                <h3>벤처투자소득공제 절세시뮬레이션</h3>
+                <p>조세특례제한법 제16조 벤처투자 소득공제를 활용한 절세 효과를 계산합니다.</p>
+                <span class="card-btn">시작하기 →</span>
+            </a>
         </div>
     </div>
-
-    <script src="script.js"></script>
 </body>
-</html> 
+</html>

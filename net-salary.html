@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>넷급여 역산 계산기 | 세무법인청년들</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: { DEFAULT: '#1e3a5f', light: '#2d4a6f', dark: '#152a45' },
+                        accent: '#2563eb',
+                    },
+                    fontFamily: {
+                        sans: ['Noto Sans KR', 'sans-serif'],
+                    },
+                },
+            },
+        };
+    </script>
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; }
+        .result-value { transition: all 0.3s ease; }
+        .result-value.updated { animation: pulse-subtle 0.5s ease; }
+        @keyframes pulse-subtle {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        input[type="text"]:focus, input[type="number"]:focus { outline: none; }
+        .tooltip-wrap { position: relative; }
+        .tooltip-wrap:hover .tooltip-text { opacity: 1; visibility: visible; }
+        .tooltip-text {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 6px;
+            padding: 8px 12px;
+            background: #1e3a5f;
+            color: white;
+            font-size: 12px;
+            border-radius: 8px;
+            white-space: normal;
+            max-width: 280px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s, visibility 0.2s;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    <div class="max-w-2xl mx-auto px-4 py-8 md:py-12">
+        <!-- 헤더 -->
+        <header class="text-center mb-8 md:mb-10">
+            <h1 class="text-xl md:text-2xl font-bold text-navy-dark mb-2">
+                넷(Net) 급여 역산 계산기
+            </h1>
+            <p class="text-slate-600 text-sm md:text-base">
+                목표 실수령액에 맞는 세전 급여와 사업주 부담액을 역산합니다 (2024년 기준)
+            </p>
+            <p class="mt-2 text-sm">
+                <a href="index.html" class="text-accent hover:underline">대시보드로 돌아가기</a>
+                <span class="text-slate-300 mx-1">|</span>
+                <a href="venture.html" class="text-accent hover:underline">벤처투자 절세 시뮬레이터</a>
+                <span class="text-slate-300 mx-1">|</span>
+                <a href="corporate-income.html" class="text-accent hover:underline">법인소득처분</a>
+            </p>
+        </header>
+
+        <!-- 입력 영역 -->
+        <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8 mb-6 border border-slate-100">
+            <h2 class="text-lg font-semibold text-navy mb-4">기본 정보 입력</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label for="target-net" class="block text-sm font-medium text-slate-700 mb-1">
+                        목표 세후 월 실수령액 (원)
+                    </label>
+                    <input type="text" id="target-net" placeholder="예: 5,000,000"
+                        class="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
+                        inputmode="numeric">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="dependents" class="block text-sm font-medium text-slate-700 mb-1">부양가족 수 (본인 포함)</label>
+                        <select id="dependents" class="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-accent focus:ring-2 focus:ring-accent/20">
+                            <option value="1">1명</option>
+                            <option value="2">2명</option>
+                            <option value="3">3명</option>
+                            <option value="4">4명</option>
+                            <option value="5">5명</option>
+                            <option value="6">6명</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="children-under20" class="block text-sm font-medium text-slate-700 mb-1">20세 이하 자녀 수</label>
+                        <select id="children-under20" class="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-accent focus:ring-2 focus:ring-accent/20">
+                            <option value="0">0명</option>
+                            <option value="1">1명</option>
+                            <option value="2">2명</option>
+                            <option value="3">3명</option>
+                            <option value="4">4명</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 gap-4">
+                    <div>
+                        <label for="workers-comp-industry" class="block text-sm font-medium text-slate-700 mb-1">산재보험 업종 (사업주 부담)</label>
+                        <select id="workers-comp-industry" class="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-accent focus:ring-2 focus:ring-accent/20">
+                            <!-- 옵션은 JS에서 동적 생성 -->
+                        </select>
+                    </div>
+                    <div id="workers-comp-custom-wrap" class="hidden">
+                        <label for="workers-comp-custom" class="block text-sm font-medium text-slate-700 mb-1">산재보험 요율 직접 입력 (%)</label>
+                        <input type="text" id="workers-comp-custom" placeholder="예: 0.7" class="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-accent focus:ring-2 focus:ring-accent/20" inputmode="decimal">
+                    </div>
+                </div>
+            </div>
+
+            <h3 class="text-base font-semibold text-navy mt-6 mb-3">비과세 수당 (선택)</h3>
+            <p class="text-sm text-slate-500 mb-4">각 항목 최대 20만 원. 체크 시 금액 입력.</p>
+            <div class="space-y-3">
+                <div class="flex items-center gap-3">
+                    <input type="checkbox" id="meal" class="rounded border-slate-300 text-accent focus:ring-accent">
+                    <label for="meal" class="text-sm text-slate-700">식대</label>
+                    <input type="text" id="meal-amount" placeholder="0" class="w-24 px-3 py-2 rounded-lg border border-slate-200 text-sm amount-input" inputmode="numeric" disabled>
+                    <span class="text-slate-400 text-sm">원 (최대 20만)</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <input type="checkbox" id="vehicle" class="rounded border-slate-300 text-accent focus:ring-accent">
+                    <label for="vehicle" class="text-sm text-slate-700">자가운전보조금</label>
+                    <input type="text" id="vehicle-amount" placeholder="0" class="w-24 px-3 py-2 rounded-lg border border-slate-200 text-sm amount-input" inputmode="numeric" disabled>
+                    <span class="text-slate-400 text-sm">원 (최대 20만)</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <input type="checkbox" id="childcare" class="rounded border-slate-300 text-accent focus:ring-accent">
+                    <label for="childcare" class="text-sm text-slate-700">자녀보육수당</label>
+                    <input type="text" id="childcare-amount" placeholder="0" class="w-24 px-3 py-2 rounded-lg border border-slate-200 text-sm amount-input" inputmode="numeric" disabled>
+                    <span class="text-slate-400 text-sm">원 (최대 20만)</span>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <div class="flex items-center gap-3 tooltip-wrap">
+                        <input type="checkbox" id="research" class="rounded border-slate-300 text-accent focus:ring-accent">
+                        <label for="research" class="text-sm text-slate-700">연구보조비</label>
+                        <span class="text-amber-600 cursor-help" title="연구전담요원은 원칙적으로 연구만 해야 하며 영업, 회계 등 타 업무 겸직 시 세액공제가 취소될 수 있습니다">ⓘ</span>
+                        <div class="tooltip-text">연구전담요원은 원칙적으로 연구만 해야 하며 영업, 회계 등 타 업무 겸직 시 세액공제가 취소될 수 있습니다</div>
+                        <input type="text" id="research-amount" placeholder="0" class="w-24 px-3 py-2 rounded-lg border border-slate-200 text-sm amount-input" inputmode="numeric" disabled>
+                        <span class="text-slate-400 text-sm">원 (최대 20만)</span>
+                    </div>
+                    <p id="research-warning" class="hidden text-xs text-amber-600 pl-6">※ 연구전담요원은 원칙적으로 연구만 해야 하며 영업, 회계 등 타 업무 겸직 시 세액공제가 취소될 수 있습니다</p>
+                </div>
+            </div>
+
+            <button id="calc-btn" onclick="calculate()"
+                class="w-full mt-6 py-3.5 bg-navy hover:bg-navy-light text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.99]">
+                역산 계산하기
+            </button>
+        </div>
+
+        <!-- 결과 영역 -->
+        <div id="result-section" class="space-y-4 opacity-0 pointer-events-none transition-opacity duration-300">
+            <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8 border border-slate-100">
+                <h2 class="text-lg font-semibold text-navy mb-4">역산 결과</h2>
+                
+                <!-- 근로계약서용 -->
+                <div class="bg-slate-50 rounded-xl p-4 mb-4">
+                    <h3 class="font-medium text-navy mb-2">근로계약서 작성용</h3>
+                    <div class="space-y-1 text-sm">
+                        <div class="flex justify-between"><span class="text-slate-600">세전 월 급여액</span><span id="result-monthly-gross" class="font-semibold text-navy result-value">-</span></div>
+                        <div class="flex justify-between"><span class="text-slate-600">연봉 환산액</span><span id="result-annual-gross" class="font-semibold text-navy result-value">-</span></div>
+                    </div>
+                </div>
+
+                <!-- 공제 내역 -->
+                <div class="mb-4">
+                    <h3 class="font-medium text-navy mb-2">공제 내역 (월)</h3>
+                    <div class="space-y-1 text-sm text-slate-600">
+                        <div class="flex justify-between"><span>국민연금</span><span id="result-pension">-</span></div>
+                        <div class="flex justify-between"><span>건강보험</span><span id="result-health">-</span></div>
+                        <div class="flex justify-between"><span>장기요양보험</span><span id="result-longterm">-</span></div>
+                        <div class="flex justify-between"><span>고용보험</span><span id="result-employment">-</span></div>
+                        <div class="flex justify-between"><span>소득세</span><span id="result-incometax">-</span></div>
+                        <div class="flex justify-between"><span>지방소득세</span><span id="result-localtax">-</span></div>
+                        <div class="flex justify-between font-medium pt-2 border-t border-slate-100"><span>총 공제액</span><span id="result-total-deduction">-</span></div>
+                    </div>
+                </div>
+
+                <!-- 사업주 총지출액 -->
+                <div class="bg-accent/5 rounded-xl p-4 -mx-2 px-6">
+                    <p class="text-slate-700 text-sm leading-relaxed">
+                        해당 근로자 채용 시 매월 회사가 실제 부담하는 총 인건비는 <strong id="result-employer-total" class="text-accent result-value">-</strong> 입니다.
+                    </p>
+                    <p class="text-xs text-slate-500 mt-1">(세전 급여 + 4대보험 전체: 근로자부담분 + 사업주부담분)</p>
+                    <div class="mt-3 flex flex-wrap items-center gap-2">
+                        <label for="result-workers-comp-industry" class="text-xs font-medium text-slate-600">산재보험 업종:</label>
+                        <select id="result-workers-comp-industry" class="text-xs px-3 py-2 rounded-lg border border-slate-200 bg-white focus:border-accent focus:ring-1 focus:ring-accent/20 min-w-[180px]">
+                            <!-- 옵션은 JS에서 동적 생성 -->
+                        </select>
+                        <span id="result-workers-comp-custom-wrap" class="hidden flex items-center gap-1">
+                            <input type="text" id="result-workers-comp-custom" placeholder="0.7" class="w-16 px-2 py-1.5 text-xs rounded border border-slate-200" inputmode="decimal">
+                            <span class="text-xs text-slate-500">%</span>
+                        </span>
+                    </div>
+                    <!-- 4대보험 상세 내역 펼치기 -->
+                    <div class="mt-3 pt-3 border-t border-slate-200/60">
+                        <button id="insurance-detail-toggle" type="button"
+                            class="flex items-center gap-2 text-xs font-medium text-slate-600 hover:text-navy transition-colors">
+                            <span id="insurance-detail-toggle-text">4대보험 계산 내역 펼치기</span>
+                            <svg id="insurance-detail-toggle-icon" class="w-3.5 h-3.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        <div id="insurance-detail-content" class="hidden mt-3 space-y-3 text-xs">
+                            <div class="bg-white/60 rounded-lg p-3 space-y-1.5">
+                                <h4 class="font-semibold text-navy">근로자 부담분</h4>
+                                <div class="space-y-1 text-slate-600">
+                                    <div class="flex justify-between"><span>국민연금</span><span id="detail-emp-pension">-</span></div>
+                                    <div class="flex justify-between"><span>건강보험</span><span id="detail-emp-health">-</span></div>
+                                    <div class="flex justify-between"><span>장기요양보험</span><span id="detail-emp-longterm">-</span></div>
+                                    <div class="flex justify-between"><span>고용보험</span><span id="detail-emp-employment">-</span></div>
+                                    <div class="flex justify-between font-medium pt-1 border-t border-slate-200"><span>소계</span><span id="detail-emp-total">-</span></div>
+                                </div>
+                            </div>
+                            <div class="bg-white/60 rounded-lg p-3 space-y-1.5">
+                                <h4 class="font-semibold text-navy">사업주 부담분</h4>
+                                <div class="space-y-1 text-slate-600">
+                                    <div class="flex justify-between"><span>국민연금</span><span id="detail-employer-pension">-</span></div>
+                                    <div class="flex justify-between"><span>건강보험</span><span id="detail-employer-health">-</span></div>
+                                    <div class="flex justify-between"><span>장기요양보험</span><span id="detail-employer-longterm">-</span></div>
+                                    <div class="flex justify-between"><span>고용보험</span><span id="detail-employer-employment">-</span></div>
+                                    <div class="flex justify-between"><span id="detail-employer-workers-label">산재보험</span><span id="detail-employer-workers">-</span></div>
+                                    <div class="flex justify-between font-medium pt-1 border-t border-slate-200"><span>소계</span><span id="detail-employer-total">-</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- 퇴직금 월 적립액 -->
+                <div class="rounded-xl p-4 border border-slate-100 bg-slate-50/50">
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-slate-600">퇴직금 월 적립액</span>
+                        <span id="result-severance-reserve" class="font-medium text-navy">-</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1">※ 추후 퇴직금 고려할 시 인건비 항목으로 추가</p>
+                </div>
+            </div>
+
+            <!-- 고소득자 배너 (8,000만원 초과 시) -->
+            <div id="venture-banner" class="hidden bg-gradient-to-r from-navy to-navy-light rounded-2xl p-6 text-white">
+                <h3 class="font-bold text-lg mb-2">3,000만 원 투자 시 100% 공제</h3>
+                <p class="text-sm text-white/90 mb-4">
+                    투자 금액 구간에 따라 3,000만원 이하 100%, 3,000만원 초과 5,000만원 이하 70%, 5,000만원 초과분 30%의 소득공제가 적용됩니다. 벤처투자 소득공제로 절세 효과를 극대화해 보세요.
+                </p>
+                <a href="venture.html" class="inline-block px-5 py-2.5 bg-white text-navy font-semibold rounded-xl hover:bg-slate-100 transition-colors">
+                    벤처투자 절세 시뮬레이션 →
+                </a>
+            </div>
+
+            <!-- 법적 고지 -->
+            <div class="text-xs text-slate-500 leading-relaxed mt-4">
+                ※ 본 시뮬레이션 결과는 참고용이며, 2024년 4대보험 요율 및 근로소득 간이세액표 근사치를 적용했습니다. 실제 원천징수액은 근로환경·비과세 항목 등에 따라 달라질 수 있습니다.
+            </div>
+        </div>
+    </div>
+
+    <script src="net-salary.js"></script>
+    <script>
+        const MAX_NON_TAXABLE = 200000;
+
+        // 산재보험 업종 옵션 초기화 (입력 영역 + 결과 영역)
+        function initWorkersCompSelect(selectId, isResult) {
+            const sel = document.getElementById(selectId);
+            if (!sel) return;
+            sel.innerHTML = '';
+            WORKERS_COMP_INDUSTRY_RATES.forEach((item, idx) => {
+                const opt = document.createElement('option');
+                opt.value = String(item.rate);
+                const rateStr = (item.rate * 100).toFixed(2);
+                opt.textContent = item.name + ' (' + rateStr + '%)' + (idx === 0 ? ' (기본)' : '');
+                if (idx === 0) opt.selected = true;
+                sel.appendChild(opt);
+            });
+            const customOpt = document.createElement('option');
+            customOpt.value = 'custom';
+            customOpt.textContent = '직접 입력';
+            sel.appendChild(customOpt);
+        }
+        initWorkersCompSelect('workers-comp-industry');
+        initWorkersCompSelect('result-workers-comp-industry');
+
+        document.getElementById('workers-comp-industry').addEventListener('change', function () {
+            document.getElementById('workers-comp-custom-wrap').classList.toggle('hidden', this.value !== 'custom');
+        });
+
+        // 결과 영역 산재보험 변경 시 인건비 즉시 반영
+        let lastCalculatedGross = 0;
+        function getResultWorkersCompRate() {
+            const sel = document.getElementById('result-workers-comp-industry');
+            if (sel.value === 'custom') {
+                const v = parseFloat(document.getElementById('result-workers-comp-custom').value) || 0;
+                return Math.max(0.001, Math.min(0.3, v / 100));
+            }
+            return parseFloat(sel.value) || 0.007;
+        }
+        function onResultWorkersCompChange() {
+            if (lastCalculatedGross <= 0) return;
+            document.getElementById('result-workers-comp-custom-wrap').classList.toggle('hidden', document.getElementById('result-workers-comp-industry').value !== 'custom');
+            const rate = getResultWorkersCompRate();
+            const cost = calcEmployerTotalCost(lastCalculatedGross, rate);
+            document.getElementById('result-employer-total').textContent = formatWonDisplay(cost.gross + cost.totalInsurance);
+            document.getElementById('result-severance-reserve').textContent = formatWonDisplay(cost.severanceReserve);
+            const empIns = { total: 0, nationalPension: 0, healthInsurance: 0, longTermCare: 0, employment: 0 };
+            const employerIns = calcEmployerSocialInsurance(lastCalculatedGross, rate);
+            document.getElementById('detail-employer-pension').textContent = formatWonDisplay(employerIns.nationalPension);
+            document.getElementById('detail-employer-health').textContent = formatWonDisplay(employerIns.healthInsurance);
+            document.getElementById('detail-employer-longterm').textContent = formatWonDisplay(employerIns.longTermCare);
+            document.getElementById('detail-employer-employment').textContent = formatWonDisplay(employerIns.employment);
+            document.getElementById('detail-employer-workers-label').textContent = '산재보험 (' + (employerIns.workersCompRate * 100).toFixed(2) + '%)';
+            document.getElementById('detail-employer-workers').textContent = formatWonDisplay(employerIns.workersCompensation);
+            document.getElementById('detail-employer-total').textContent = formatWonDisplay(employerIns.total);
+        }
+        document.getElementById('result-workers-comp-industry').addEventListener('change', onResultWorkersCompChange);
+        document.getElementById('result-workers-comp-custom').addEventListener('input', onResultWorkersCompChange);
+
+        function getWorkersCompRate() {
+            const sel = document.getElementById('workers-comp-industry');
+            if (sel.value === 'custom') {
+                const v = parseFloat(document.getElementById('workers-comp-custom').value) || 0;
+                return Math.max(0.001, Math.min(0.3, v / 100)); // 0.1%~30% 범위
+            }
+            return parseFloat(sel.value) || 0.007;
+        }
+
+        function parseWon(input) {
+            const cleaned = String(input || '').replace(/,/g, '').trim();
+            const num = parseInt(cleaned, 10);
+            return isNaN(num) || num < 0 ? 0 : num;
+        }
+
+        function getNonTaxableTotal() {
+            let total = 0;
+            const items = [
+                { check: 'meal', amount: 'meal-amount' },
+                { check: 'vehicle', amount: 'vehicle-amount' },
+                { check: 'childcare', amount: 'childcare-amount' },
+                { check: 'research', amount: 'research-amount' },
+            ];
+            items.forEach(({ check, amount }) => {
+                if (document.getElementById(check).checked) {
+                    total += Math.min(parseWon(document.getElementById(amount).value), MAX_NON_TAXABLE);
+                }
+            });
+            return total;
+        }
+
+        function formatWonDisplay(won) {
+            if (won === 0) return '0원';
+            return Math.round(won).toLocaleString('ko-KR') + '원';
+        }
+
+        function calculate() {
+            const targetNet = parseWon(document.getElementById('target-net').value);
+            const dependents = parseInt(document.getElementById('dependents').value, 10) || 1;
+            const childrenUnder20 = parseInt(document.getElementById('children-under20').value, 10) || 0;
+            const nonTaxableTotal = getNonTaxableTotal();
+
+            if (targetNet <= 0) {
+                alert('목표 세후 월 실수령액을 입력해 주세요.');
+                return;
+            }
+
+            const result = reverseCalcGross(targetNet, dependents, childrenUnder20, nonTaxableTotal);
+            const workersCompRate = getWorkersCompRate();
+            const employerCost = calcEmployerTotalCost(result.gross, workersCompRate);
+            lastCalculatedGross = result.gross;
+
+            // 결과 영역 산재보험 선택 동기화
+            const resultSel = document.getElementById('result-workers-comp-industry');
+            const inputSel = document.getElementById('workers-comp-industry');
+            resultSel.value = inputSel.value;
+            const resultCustomWrap = document.getElementById('result-workers-comp-custom-wrap');
+            if (inputSel.value === 'custom') {
+                resultCustomWrap.classList.remove('hidden');
+                document.getElementById('result-workers-comp-custom').value = document.getElementById('workers-comp-custom').value || '0.7';
+            } else {
+                resultCustomWrap.classList.add('hidden');
+            }
+
+            // 결과 표시
+            document.getElementById('result-monthly-gross').textContent = formatWonDisplay(result.gross);
+            document.getElementById('result-annual-gross').textContent = formatWonDisplay(result.gross * 12);
+
+            document.getElementById('result-pension').textContent = formatWonDisplay(result.insurance.nationalPension);
+            document.getElementById('result-health').textContent = formatWonDisplay(result.insurance.healthInsurance);
+            document.getElementById('result-longterm').textContent = formatWonDisplay(result.insurance.longTermCare);
+            document.getElementById('result-employment').textContent = formatWonDisplay(result.insurance.employment);
+            document.getElementById('result-incometax').textContent = formatWonDisplay(result.incomeTax / 12);
+            document.getElementById('result-localtax').textContent = formatWonDisplay(result.localTax / 12);
+
+            const totalDeduction = result.insurance.total + result.monthlyTax;
+            document.getElementById('result-total-deduction').textContent = formatWonDisplay(totalDeduction);
+
+            const actualBurden = employerCost.gross + employerCost.totalInsurance;
+            document.getElementById('result-employer-total').textContent = formatWonDisplay(actualBurden);
+            document.getElementById('result-severance-reserve').textContent = formatWonDisplay(employerCost.severanceReserve);
+
+            // 4대보험 상세 내역
+            const empIns = result.insurance;
+            const employerIns = calcEmployerSocialInsurance(result.gross, workersCompRate);
+            document.getElementById('detail-emp-pension').textContent = formatWonDisplay(empIns.nationalPension);
+            document.getElementById('detail-emp-health').textContent = formatWonDisplay(empIns.healthInsurance);
+            document.getElementById('detail-emp-longterm').textContent = formatWonDisplay(empIns.longTermCare);
+            document.getElementById('detail-emp-employment').textContent = formatWonDisplay(empIns.employment);
+            document.getElementById('detail-emp-total').textContent = formatWonDisplay(empIns.total);
+            document.getElementById('detail-employer-pension').textContent = formatWonDisplay(employerIns.nationalPension);
+            document.getElementById('detail-employer-health').textContent = formatWonDisplay(employerIns.healthInsurance);
+            document.getElementById('detail-employer-longterm').textContent = formatWonDisplay(employerIns.longTermCare);
+            document.getElementById('detail-employer-employment').textContent = formatWonDisplay(employerIns.employment);
+            document.getElementById('detail-employer-workers-label').textContent = '산재보험 (' + (employerIns.workersCompRate * 100).toFixed(2) + '%)';
+            document.getElementById('detail-employer-workers').textContent = formatWonDisplay(employerIns.workersCompensation);
+            document.getElementById('detail-employer-total').textContent = formatWonDisplay(employerIns.total);
+
+            // 계산 시 상세 내역 접기
+            document.getElementById('insurance-detail-content').classList.add('hidden');
+            document.getElementById('insurance-detail-toggle-icon').classList.remove('rotate-180');
+            document.getElementById('insurance-detail-toggle-text').textContent = '4대보험 계산 내역 펼치기';
+
+            // 고소득자 배너 (연봉 8,000만원 초과)
+            const annualGross = result.gross * 12;
+            const ventureBanner = document.getElementById('venture-banner');
+            if (annualGross > 80000000) {
+                ventureBanner.classList.remove('hidden');
+            } else {
+                ventureBanner.classList.add('hidden');
+            }
+
+            document.getElementById('result-section').classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        function toggleInsuranceDetail() {
+            const content = document.getElementById('insurance-detail-content');
+            const icon = document.getElementById('insurance-detail-toggle-icon');
+            const text = document.getElementById('insurance-detail-toggle-text');
+            const isOpen = !content.classList.contains('hidden');
+            content.classList.toggle('hidden', isOpen);
+            icon.classList.toggle('rotate-180', !isOpen);
+            text.textContent = isOpen ? '4대보험 계산 내역 펼치기' : '4대보험 계산 내역 접기';
+        }
+        document.getElementById('insurance-detail-toggle').addEventListener('click', toggleInsuranceDetail);
+
+        // 비과세 체크박스 토글
+        ['meal', 'vehicle', 'childcare', 'research'].forEach(id => {
+            const check = document.getElementById(id);
+            const amountId = id + '-amount';
+            const amountInput = document.getElementById(amountId);
+            check.addEventListener('change', () => {
+                amountInput.disabled = !check.checked;
+                if (check.checked && !amountInput.value) amountInput.value = '0';
+                if (id === 'research') {
+                    document.getElementById('research-warning').classList.toggle('hidden', !check.checked);
+                }
+            });
+        });
+
+        // 금액 입력 천단위 콤마
+        document.querySelectorAll('.amount-input, #target-net').forEach(el => {
+            el.addEventListener('input', function () {
+                let v = this.value.replace(/[^0-9]/g, '');
+                this.value = v ? parseInt(v, 10).toLocaleString('ko-KR') : '';
+            });
+        });
+
+        document.getElementById('target-net').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') calculate();
+        });
+    </script>
+</body>
+</html>
