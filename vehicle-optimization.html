@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>사업용 차량 최적화 및 절세 시뮬레이터 | 세무법인청년들</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: { DEFAULT: '#1e3a5f', light: '#2d4a6f', dark: '#152a45' },
+                        accent: '#2563eb',
+                    },
+                    fontFamily: {
+                        sans: ['Noto Sans KR', 'sans-serif'],
+                    },
+                },
+            },
+        };
+    </script>
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; }
+        .result-value { transition: all 0.3s ease; }
+        .result-value.updated { animation: pulse-subtle 0.5s ease; }
+        @keyframes pulse-subtle {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        input[type="text"]:focus, input[type="number"]:focus, select:focus { outline: none; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    <div class="max-w-6xl mx-auto px-4 py-8 md:py-12">
+        <!-- 헤더 -->
+        <header class="text-center mb-8 md:mb-10">
+            <h1 class="text-xl md:text-2xl font-bold text-navy-dark mb-2">
+                사업용 차량 최적화 및 절세 시뮬레이터
+            </h1>
+            <p class="text-slate-600 text-sm md:text-base">
+                할부·리스·렌트 중 나에게 맞는 상품을 추천받고, 대표 연봉 기반 절세 효과를 확인하세요
+            </p>
+            <p class="mt-2 text-sm">
+                <a href="index.html" class="text-accent hover:underline">대시보드로 돌아가기</a>
+                <span class="text-slate-300 mx-1">|</span>
+                <a href="net-salary.html" class="text-accent hover:underline">넷급여 역산</a>
+                <span class="text-slate-300 mx-1">|</span>
+                <a href="corporate-income.html" class="text-accent hover:underline">법인소득처분</a>
+                <span class="text-slate-300 mx-1">|</span>
+                <a href="venture.html" class="text-accent hover:underline">벤처투자 절세</a>
+            </p>
+        </header>
+
+        <!-- Step 1: 설문 -->
+        <section id="step1-section" class="mb-10">
+            <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8 border border-slate-100">
+                <h2 class="text-lg font-semibold text-navy mb-2">Step 1. 맞춤형 상품 추천</h2>
+                <p class="text-slate-600 text-sm mb-6">4가지 질문에 답하여 가장 적합한 차량 운용 방식을 추천받으세요.</p>
+
+                <!-- Progress Bar -->
+                <div class="mb-6">
+                    <div class="flex justify-between text-sm text-slate-600 mb-2">
+                        <span>진행률</span>
+                        <span id="progress-text">1/4</span>
+                    </div>
+                    <div class="h-2 bg-slate-200 rounded-full overflow-hidden">
+                        <div id="progress-bar" class="h-full bg-accent transition-all duration-300" style="width: 25%"></div>
+                    </div>
+                </div>
+
+                <!-- 질문 카드 -->
+                <div id="question-cards">
+                    <div id="q1-card" class="question-card">
+                        <p class="text-slate-800 font-medium mb-6">하·허·호 번호판 사용에 거부감이 있으신가요?</p>
+                        <div class="flex gap-4">
+                            <button type="button" onclick="answerQuestion(1, true)" class="flex-1 py-3 px-4 rounded-xl border-2 border-slate-200 hover:border-accent hover:bg-accent/5 font-medium transition-all">예</button>
+                            <button type="button" onclick="answerQuestion(1, false)" class="flex-1 py-3 px-4 rounded-xl border-2 border-slate-200 hover:border-accent hover:bg-accent/5 font-medium transition-all">아니오</button>
+                        </div>
+                    </div>
+                    <div id="q2-card" class="question-card hidden">
+                        <p class="text-slate-800 font-medium mb-6">1년 내 부동산 담보대출이나 큰 규모의 사업자금 대출 계획이 있으신가요?</p>
+                        <div class="flex gap-4">
+                            <button type="button" onclick="answerQuestion(2, true)" class="flex-1 py-3 px-4 rounded-xl border-2 border-slate-200 hover:border-accent hover:bg-accent/5 font-medium transition-all">예</button>
+                            <button type="button" onclick="answerQuestion(2, false)" class="flex-1 py-3 px-4 rounded-xl border-2 border-slate-200 hover:border-accent hover:bg-accent/5 font-medium transition-all">아니오</button>
+                        </div>
+                    </div>
+                    <div id="q3-card" class="question-card hidden">
+                        <p class="text-slate-800 font-medium mb-6">사고 이력이 많아 보험료가 높거나, 차량 관리를 신경 쓰고 싶지 않으신가요?</p>
+                        <div class="flex gap-4">
+                            <button type="button" onclick="answerQuestion(3, true)" class="flex-1 py-3 px-4 rounded-xl border-2 border-slate-200 hover:border-accent hover:bg-accent/5 font-medium transition-all">예</button>
+                            <button type="button" onclick="answerQuestion(3, false)" class="flex-1 py-3 px-4 rounded-xl border-2 border-slate-200 hover:border-accent hover:bg-accent/5 font-medium transition-all">아니오</button>
+                        </div>
+                    </div>
+                    <div id="q4-card" class="question-card hidden">
+                        <p class="text-slate-800 font-medium mb-6">차량을 한 번 사면 5년 이상 타실 계획인가요?</p>
+                        <div class="flex gap-4">
+                            <button type="button" onclick="answerQuestion(4, true)" class="flex-1 py-3 px-4 rounded-xl border-2 border-slate-200 hover:border-accent hover:bg-accent/5 font-medium transition-all">예</button>
+                            <button type="button" onclick="answerQuestion(4, false)" class="flex-1 py-3 px-4 rounded-xl border-2 border-slate-200 hover:border-accent hover:bg-accent/5 font-medium transition-all">아니오</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Step 2: 절세 계산 -->
+        <section id="step2-section" class="opacity-0 pointer-events-none transition-opacity duration-500">
+            <div class="grid md:grid-cols-1 lg:grid-cols-4 gap-6">
+                <!-- 좌측: 입력 폼 -->
+                <div class="lg:col-span-1 bg-white rounded-2xl shadow-lg p-6 md:p-8 border border-slate-100">
+                    <h2 class="text-lg font-semibold text-navy mb-4">Step 2. 절세 효과 계산</h2>
+                    <p class="text-slate-600 text-sm mb-6">차량 정보와 대표 연봉을 입력하여 절세 효과를 확인하세요.</p>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label for="vehicle-price" class="block text-sm font-medium text-slate-700 mb-1">차량 가액 (원)</label>
+                            <input type="text" id="vehicle-price" placeholder="예: 50,000,000"
+                                class="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all currency-input"
+                                inputmode="numeric">
+                        </div>
+                        <div>
+                            <label for="product-type" class="block text-sm font-medium text-slate-700 mb-1">상품 유형</label>
+                            <select id="product-type" class="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-accent focus:ring-2 focus:ring-accent/20">
+                                <option value="lease">리스</option>
+                                <option value="rent">장기렌트</option>
+                                <option value="installment">할부/일시불</option>
+                            </select>
+                        </div>
+                        <div id="monthly-fee-group">
+                            <label for="monthly-fee" class="block text-sm font-medium text-slate-700 mb-1">월 리스/렌트료 (원)</label>
+                            <input type="text" id="monthly-fee" placeholder="예: 800,000"
+                                class="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all currency-input"
+                                inputmode="numeric">
+                        </div>
+                        <div>
+                            <label for="representative-salary" class="block text-sm font-medium text-slate-700 mb-1">대표 연봉 (원) <span class="text-accent">*한계세율 산출용</span></label>
+                            <input type="text" id="representative-salary" placeholder="예: 80,000,000"
+                                class="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all currency-input"
+                                inputmode="numeric">
+                        </div>
+                        <div>
+                            <label for="maintenance-cost" class="block text-sm font-medium text-slate-700 mb-1">예상 연간 유지비 (원) <span class="text-slate-400">선택</span></label>
+                            <input type="text" id="maintenance-cost" placeholder="예: 2,000,000 (유류비, 수선비 등)"
+                                class="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all currency-input"
+                                inputmode="numeric">
+                        </div>
+                    </div>
+
+                    <button id="calc-btn" onclick="calculateTaxSavings()"
+                        class="w-full mt-6 py-3.5 bg-navy hover:bg-navy-light text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.99]">
+                        절세 효과 계산하기
+                    </button>
+                </div>
+
+                <!-- 우측: Case 1/2/3 결과 (3열 횡배열) -->
+                <div class="lg:col-span-3">
+                    <div id="recommendation-summary" class="mb-4 p-3 bg-accent/10 rounded-lg text-sm text-slate-700 hidden"></div>
+                    <div id="green-plate-warning" class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800 hidden"></div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Case 1: 단순절세계산 -->
+                    <div class="bg-white rounded-2xl shadow-lg p-5 border border-slate-100 flex flex-col">
+                        <h3 class="text-base font-semibold text-navy mb-1 text-center">Case 1</h3>
+                        <p class="text-xs text-slate-500 mb-4 text-center">단순절세계산</p>
+                        <div class="space-y-2 flex-1">
+                            <div class="flex justify-between items-center py-2 border-b border-slate-100">
+                                <span class="text-sm text-slate-600">연간 절세액</span>
+                                <span id="case1-annual" class="font-bold text-accent result-value">-</span>
+                            </div>
+                            <div class="flex justify-between items-center py-2">
+                                <span class="text-sm text-slate-600">5년 절세액</span>
+                                <span id="case1-5yr" class="font-semibold text-navy result-value">-</span>
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-4 border-t border-slate-100">
+                            <button type="button" onclick="toggleCaseDetail(1)" class="flex items-center gap-2 w-full py-2 text-xs font-medium text-slate-600 hover:text-accent">
+                                <span id="case1-icon">▶</span>
+                                <span id="case1-toggle-text">세부내역 펼치기</span>
+                            </button>
+                            <div id="case1-detail" class="hidden mt-3 space-y-2 text-sm">
+                                <div class="flex justify-between"><span class="text-slate-600">적용 한계세율</span><span id="case1-rate">-</span></div>
+                                <div class="flex justify-between"><span class="text-slate-600">연간 비용 인정액</span><span id="case1-allowable">-</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 개인명의대비 절세효과 (Case 2·3 합병) -->
+                    <div class="md:col-span-2 bg-white rounded-2xl shadow-lg p-5 border border-slate-100">
+                        <h3 class="text-base font-semibold text-navy mb-1 text-center">개인명의대비 절세효과</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                        <!-- 개인사업자 -->
+                        <div class="flex flex-col sm:border-r sm:border-slate-100 sm:pr-4">
+                        <p class="text-xs font-medium text-slate-600 mb-3 text-center">개인사업자</p>
+                        <div class="space-y-2 flex-1">
+                            <div class="flex justify-between items-center py-2 border-b border-slate-100">
+                                <span class="text-sm text-slate-600">연간 절세액</span>
+                                <span id="case2-annual" class="font-bold text-accent result-value">-</span>
+                            </div>
+                            <div class="flex justify-between items-center py-2">
+                                <span class="text-sm text-slate-600">5년 절세액</span>
+                                <span id="case2-5yr" class="font-semibold text-navy result-value">-</span>
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-4 border-t border-slate-100">
+                            <button type="button" onclick="toggleCaseDetail(2)" class="flex items-center gap-2 w-full py-2 text-xs font-medium text-slate-600 hover:text-accent">
+                                <span id="case2-icon">▶</span>
+                                <span id="case2-toggle-text">세부내역 펼치기</span>
+                            </button>
+                            <div id="case2-detail" class="hidden mt-3 space-y-2 text-sm">
+                                <div class="flex justify-between"><span class="text-slate-600">적용 한계세율</span><span id="case2-rate">-</span></div>
+                                <div class="flex justify-between"><span class="text-slate-600">연간 비용 인정액</span><span id="case2-allowable">-</span></div>
+                                <div class="pt-2 border-t border-slate-100">
+                                    <div class="flex justify-between"><span class="text-slate-600">소득세 절감액</span><span id="case2-tax-saving">-</span></div>
+                                    <div class="flex justify-between"><span class="text-slate-600">4대보험 효과 <span class="text-slate-400 font-normal">(국민연금·건강보험 전체)</span></span><span id="case2-insurance-effect">-</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        </div>
+                        <!-- 법인사업자 -->
+                        <div class="flex flex-col sm:pl-4">
+                        <p class="text-xs font-medium text-slate-600 mb-3 text-center">법인사업자</p>
+                        <div class="space-y-2 flex-1">
+                            <div class="flex justify-between items-center py-2 border-b border-slate-100">
+                                <span class="text-sm text-slate-600">연간 절세액</span>
+                                <span id="case3-annual" class="font-bold text-accent result-value">-</span>
+                            </div>
+                            <div class="flex justify-between items-center py-2">
+                                <span class="text-sm text-slate-600">5년 절세액</span>
+                                <span id="case3-5yr" class="font-semibold text-navy result-value">-</span>
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-4 border-t border-slate-100">
+                            <button type="button" onclick="toggleCaseDetail(3)" class="flex items-center gap-2 w-full py-2 text-xs font-medium text-slate-600 hover:text-accent">
+                                <span id="case3-icon">▶</span>
+                                <span id="case3-toggle-text">세부내역 펼치기</span>
+                            </button>
+                            <div id="case3-detail" class="hidden mt-3 space-y-2 text-sm">
+                                <div class="flex justify-between"><span class="text-slate-600">적용 한계세율</span><span id="case3-rate">-</span></div>
+                                <div class="flex justify-between"><span class="text-slate-600">연간 비용 인정액</span><span id="case3-allowable">-</span></div>
+                                <div id="case3-corp-tax-savings" class="hidden pt-2 border-t border-slate-100">
+                                    <div class="flex justify-between text-sm"><span class="text-slate-600">급여 비용처리 시 법인세 절감 (차감)</span><span id="case3-corp-tax-amount">-</span></div>
+                                </div>
+                                <div id="case3-burden-avoided" class="hidden pt-2">
+                                    <div class="flex justify-between text-sm"><span class="text-slate-600">개인 차량 사용 시 추가 부담 회피</span><span id="case3-burden-amount">-</span></div>
+                                </div>
+                                <div id="case3-burden" class="hidden pt-3 border-t border-slate-100">
+                                    <h4 class="text-xs font-semibold text-slate-700 mb-2">개인 차량 사용 시 추가 부담</h4>
+                                    <p class="text-xs text-slate-600 mb-2">대표가 차량 비용을 개인으로 부담하려면 추가 급여가 필요하며, 소득세·4대보험 부담이 발생합니다. 법인 차량은 이 부담이 없습니다.</p>
+                                    <div id="case3-add-gross-calc-desc" class="mb-2 p-2 bg-slate-50 rounded text-xs text-slate-600"></div>
+                                    <ul class="space-y-1 text-xs">
+                                        <li class="flex justify-between"><span>필요한 추가 급여</span><span id="case3-add-gross">-</span></li>
+                                        <li class="flex justify-between"><span>추가 소득세</span><span id="case3-add-tax">-</span></li>
+                                        <li class="flex justify-between"><span>추가 4대보험(사업주)</span><span id="case3-add-empr">-</span></li>
+                                        <li class="flex justify-between font-medium pt-1"><span>총 추가 부담 <span class="text-slate-400 font-normal">(소득세+사업주4대보험)</span></span><span id="case3-total-burden">-</span></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        </div>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 px-2 text-xs text-slate-500">
+                ※ 소득세법 시행령 제78조의3 기준 (차량운행일지 작성 전제, 연간 비용의 80% 인정)
+            </div>
+        </section>
+    </div>
+
+    <script src="net-salary.js"></script>
+    <script src="vehicle-optimization.js"></script>
+</body>
+</html>
