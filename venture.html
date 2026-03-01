@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>벤처기업 투자 소득공제 절세 시뮬레이터</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: { DEFAULT: '#1e3a5f', light: '#2d4a6f', dark: '#152a45' },
+                        accent: '#2563eb',
+                    },
+                    fontFamily: {
+                        sans: ['Noto Sans KR', 'sans-serif'],
+                    },
+                },
+            },
+        };
+    </script>
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; }
+        .result-value { transition: all 0.3s ease; }
+        .result-value.updated { animation: pulse-subtle 0.5s ease; }
+        @keyframes pulse-subtle {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        input[type="text"]:focus { outline: none; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    <div class="max-w-2xl mx-auto px-4 py-8 md:py-12">
+        <!-- 헤더 -->
+        <header class="text-center mb-8 md:mb-10">
+            <h1 class="text-xl md:text-2xl font-bold text-navy-dark mb-2">
+                세금은 줄이고 자산은 키우는 벤처투자 절세 시뮬레이터
+            </h1>
+            <p class="text-slate-600 text-sm md:text-base">
+                조세특례제한법 제16조 벤처투자 소득공제 (2024년 기준)
+            </p>
+            <a href="index.html" class="inline-block mt-2 text-sm text-accent hover:underline">법인 소득처분 세금 효과 분석 →</a>
+        </header>
+
+        <!-- 입력 영역 -->
+        <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8 mb-6 border border-slate-100">
+            <h2 class="text-lg font-semibold text-navy mb-4">기본 정보 입력</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label for="taxable-income" class="block text-sm font-medium text-slate-700 mb-1">
+                        현재 예상되는 소득세 과세표준을 입력해 주세요 (만원)
+                    </label>
+                    <div class="relative flex items-center">
+                        <input type="text" id="taxable-income" placeholder="예: 10,000"
+                            class="w-full px-4 py-3 pr-40 rounded-lg border border-slate-200 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
+                            inputmode="numeric">
+                        <span id="taxable-income-korean" class="absolute right-3 text-sm text-slate-500 font-medium whitespace-nowrap"></span>
+                    </div>
+                </div>
+                <div>
+                    <label for="investment-amount" class="block text-sm font-medium text-slate-700 mb-1">
+                        벤처기업에 투자할 금액을 입력해 주세요 (만원)
+                    </label>
+                    <div class="relative flex items-center">
+                        <input type="text" id="investment-amount" placeholder="예: 5,000"
+                            class="w-full px-4 py-3 pr-40 rounded-lg border border-slate-200 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
+                            inputmode="numeric">
+                        <span id="investment-amount-korean" class="absolute right-3 text-sm text-slate-500 font-medium whitespace-nowrap"></span>
+                    </div>
+                </div>
+            </div>
+
+            <button id="calc-btn" onclick="calculate()"
+                class="w-full mt-6 py-3.5 bg-navy hover:bg-navy-light text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.99]">
+                절세 효과 계산하기
+            </button>
+        </div>
+
+        <!-- 결과 영역 -->
+        <div id="result-section" class="space-y-4 opacity-0 pointer-events-none transition-opacity duration-300">
+            <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8 border border-slate-100">
+                <h2 class="text-lg font-semibold text-navy mb-4">절세 효과 결과</h2>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center py-3 border-b border-slate-100">
+                        <span class="text-slate-600">총 소득공제액</span>
+                        <span id="result-deduction" class="text-lg font-semibold text-navy result-value">-</span>
+                    </div>
+                    <div class="flex justify-between items-center py-3 border-b border-slate-100 bg-accent/5 -mx-6 px-6 rounded-lg">
+                        <span class="text-slate-700 font-medium">예상 절세 혜택</span>
+                        <span id="result-savings" class="text-xl font-bold text-accent result-value">-</span>
+                    </div>
+                    <div class="flex justify-between items-center py-3">
+                        <span class="text-slate-600">절세 수익률</span>
+                        <span id="result-roi" class="text-lg font-semibold text-navy result-value">-</span>
+                    </div>
+                </div>
+
+                <!-- 세부 계산 내역 (펴기) -->
+                <div class="mt-6 pt-4 border-t border-slate-100">
+                    <button id="detail-toggle" onclick="toggleDetail()" type="button"
+                        class="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-navy transition-colors w-full justify-center py-2">
+                        <span id="detail-toggle-text">세부 계산 내역 펴기</span>
+                        <svg id="detail-toggle-icon" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                    <div id="detail-content" class="hidden mt-4 space-y-4 text-sm">
+                        <div class="bg-slate-50 rounded-lg p-4 space-y-2">
+                            <h4 class="font-semibold text-navy">1. 벤처투자 소득공제 산출</h4>
+                            <div class="space-y-1 text-slate-600">
+                                <div class="flex justify-between"><span>3,000만원 이하 (100%)</span><span id="detail-deduction-1">-</span></div>
+                                <div class="flex justify-between"><span>3,000만원 초과~5,000만원 (70%)</span><span id="detail-deduction-2">-</span></div>
+                                <div class="flex justify-between"><span>5,000만원 초과 (30%)</span><span id="detail-deduction-3">-</span></div>
+                                <div class="flex justify-between font-medium pt-1 border-t border-slate-200"><span>산출 공제액</span><span id="detail-deduction-raw">-</span></div>
+                                <div class="flex justify-between text-slate-500"><span>공제 한도 (과세표준 50%)</span><span id="detail-deduction-limit">-</span></div>
+                                <div class="flex justify-between font-medium pt-1"><span>적용 공제액</span><span id="detail-deduction-final">-</span></div>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg p-4 space-y-2">
+                            <h4 class="font-semibold text-navy">2. 세금 계산</h4>
+                            <div class="space-y-1 text-slate-600">
+                                <div class="font-medium text-slate-700">투자 전</div>
+                                <div class="flex justify-between pl-2"><span>과세표준</span><span id="detail-taxable-before">-</span></div>
+                                <div class="flex justify-between pl-2"><span>종합소득세</span><span id="detail-national-before">-</span></div>
+                                <div class="flex justify-between pl-2"><span>지방소득세 (10%)</span><span id="detail-local-before">-</span></div>
+                                <div class="flex justify-between pl-2 font-medium border-t border-slate-200 pt-1"><span>총 세금</span><span id="detail-total-before">-</span></div>
+                                <div class="font-medium text-slate-700 pt-2">투자 후</div>
+                                <div class="flex justify-between pl-2"><span>변경 과세표준</span><span id="detail-taxable-after">-</span></div>
+                                <div class="flex justify-between pl-2"><span>종합소득세</span><span id="detail-national-after">-</span></div>
+                                <div class="flex justify-between pl-2"><span>지방소득세 (10%)</span><span id="detail-local-after">-</span></div>
+                                <div class="flex justify-between pl-2 font-medium border-t border-slate-200 pt-1"><span>총 세금</span><span id="detail-total-after">-</span></div>
+                                <div class="flex justify-between font-semibold text-accent pt-2 border-t border-slate-200"><span>예상 절세액</span><span id="detail-savings">-</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 부가 설명 -->
+            <div class="bg-slate-50 rounded-xl p-4 text-sm text-slate-600 border border-slate-100">
+                <p class="leading-relaxed">
+                    본 시뮬레이션은 지방소득세를 포함한 수치이며, 1년에 여러 번 투자하여 3년간 분산 공제 시 혜택이 더욱 커질 수 있습니다.
+                </p>
+            </div>
+
+            <!-- 법적 고지 -->
+            <div class="text-xs text-slate-500 leading-relaxed">
+                ※ 본 시뮬레이션 결과는 참고용이며, 해당 과세연도 종합소득금액의 50% 한도 내에서 적용됩니다. 연도별 분산 공제를 선택하시면 절세 혜택을 더욱 극대화할 수 있습니다.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 2024년 종합소득세 과세표준 세율표 (누진공제액 포함)
+        const TAX_BRACKETS_2024 = [
+            { min: 0, max: 14000000, rate: 0.06, deduction: 0 },
+            { min: 14000000, max: 50000000, rate: 0.15, deduction: 1260000 },
+            { min: 50000000, max: 88000000, rate: 0.24, deduction: 5760000 },
+            { min: 88000000, max: 150000000, rate: 0.35, deduction: 15440000 },
+            { min: 150000000, max: 300000000, rate: 0.38, deduction: 19940000 },
+            { min: 300000000, max: 500000000, rate: 0.40, deduction: 25940000 },
+            { min: 500000000, max: 1000000000, rate: 0.42, deduction: 35940000 },
+            { min: 1000000000, max: Infinity, rate: 0.45, deduction: 65940000 },
+        ];
+
+        function parseManwon(input) {
+            const cleaned = String(input || '').replace(/,/g, '').trim();
+            const num = parseInt(cleaned, 10);
+            if (isNaN(num) || num < 0) return 0;
+            return num * 10000; // 만원 -> 원
+        }
+
+        /** 만원 단위 숫자를 한글 읽기로 변환 (조, 억, 천, 백만원 단위) */
+        function toKoreanReadable(manwon) {
+            const man = Math.floor(Number(manwon) || 0);
+            if (man <= 0) return '';
+
+            const jo = Math.floor(man / 100000000);           // 1조 = 1억 만원
+            const eokRemainder = man % 100000000;
+            const eok = Math.floor(eokRemainder / 10000);    // 1억 = 1만 만원
+            const manRemainder = eokRemainder % 10000;       // 만 단위
+
+            function toManUnit(n) {
+                if (n === 0) return '';
+                const cheon = Math.floor(n / 1000);
+                const baek = Math.floor((n % 1000) / 100);
+                const sip = Math.floor((n % 100) / 10);
+                const il = n % 10;
+                let s = '';
+                if (cheon > 0) s += cheon + '천';
+                if (baek > 0) s += baek + '백';
+                if (sip > 0) s += sip + '십';
+                if (il > 0) s += il;
+                return s;
+            }
+
+            let result = '';
+            if (jo > 0) result += (jo >= 1000 ? toManUnit(jo) : jo) + '조';
+            if (eok > 0) result += (eok >= 1000 ? toManUnit(eok) : eok) + '억';
+            if (manRemainder > 0) result += toManUnit(manRemainder) + '만';
+            return (result || '0') + '원';
+        }
+
+        function updateKoreanHint(inputId, hintId) {
+            const input = document.getElementById(inputId);
+            const hint = document.getElementById(hintId);
+            const man = parseInt(String(input.value || '').replace(/,/g, ''), 10);
+            hint.textContent = isNaN(man) || man <= 0 ? '' : toKoreanReadable(man);
+        }
+
+        function formatManwon(won) {
+            if (won === 0) return '0';
+            const man = Math.round(won / 10000);
+            return man.toLocaleString('ko-KR') + ' 만원';
+        }
+
+        function formatPercent(value) {
+            if (value === 0) return '0%';
+            return value.toFixed(1) + '%';
+        }
+
+        /** 벤처투자 소득공제액 산출 (조세특례제한법 제16조) - 상세 내역 포함 */
+        function calcVentureDeductionDetail(investmentWon) {
+            let d1 = 0, d2 = 0, d3 = 0;
+            if (investmentWon <= 30000000) {
+                d1 = investmentWon * 1.0;
+            } else if (investmentWon <= 50000000) {
+                d1 = 30000000 * 1.0;
+                d2 = (investmentWon - 30000000) * 0.7;
+            } else {
+                d1 = 30000000 * 1.0;
+                d2 = 20000000 * 0.7;
+                d3 = (investmentWon - 50000000) * 0.3;
+            }
+            const raw = Math.round(d1 + d2 + d3);
+            return { d1: Math.round(d1), d2: Math.round(d2), d3: Math.round(d3), raw };
+        }
+
+        /** 공제 한도 적용: 과세표준의 50% */
+        function applyDeductionLimit(deduction, taxableIncome) {
+            const limit = taxableIncome * 0.5;
+            return Math.min(deduction, limit);
+        }
+
+        /** 종합소득세 산출세액 (2024년) */
+        function calcIncomeTax(taxableIncome) {
+            if (isNaN(taxableIncome) || taxableIncome <= 0) return 0;
+            for (const b of TAX_BRACKETS_2024) {
+                if (taxableIncome >= b.min && taxableIncome <= b.max) {
+                    const tax = taxableIncome * b.rate - b.deduction;
+                    return Math.max(Math.round(tax), 0);
+                }
+            }
+            return 0;
+        }
+
+        /** 산출세액 + 지방소득세 10% */
+        function calcTotalTax(taxableIncome) {
+            const national = calcIncomeTax(taxableIncome);
+            const local = Math.round(national * 0.1);
+            return national + local;
+        }
+
+        function toggleDetail() {
+            const content = document.getElementById('detail-content');
+            const icon = document.getElementById('detail-toggle-icon');
+            const text = document.getElementById('detail-toggle-text');
+            const isOpen = !content.classList.contains('hidden');
+            content.classList.toggle('hidden', isOpen);
+            icon.classList.toggle('rotate-180', !isOpen);
+            text.textContent = isOpen ? '세부 계산 내역 펴기' : '세부 계산 내역 접기';
+        }
+
+        function calculate() {
+            const taxableInput = document.getElementById('taxable-income').value;
+            const investmentInput = document.getElementById('investment-amount').value;
+
+            const taxableWon = parseManwon(taxableInput);
+            const investmentWon = parseManwon(investmentInput);
+
+            const resultSection = document.getElementById('result-section');
+            const deductionEl = document.getElementById('result-deduction');
+            const savingsEl = document.getElementById('result-savings');
+            const roiEl = document.getElementById('result-roi');
+
+            if (taxableWon <= 0 || investmentWon <= 0) {
+                alert('과세표준과 투자금액을 모두 입력해 주세요.');
+                return;
+            }
+
+            // 1. 벤처공제액 산출
+            const dedDetail = calcVentureDeductionDetail(investmentWon);
+            const deduction = applyDeductionLimit(dedDetail.raw, taxableWon);
+            const limit = taxableWon * 0.5;
+
+            // 2. 세금 계산
+            const nationalBefore = calcIncomeTax(taxableWon);
+            const localBefore = Math.round(nationalBefore * 0.1);
+            const taxBefore = nationalBefore + localBefore;
+            const taxableAfter = Math.max(taxableWon - deduction, 0);
+            const nationalAfter = calcIncomeTax(taxableAfter);
+            const localAfter = Math.round(nationalAfter * 0.1);
+            const taxAfter = nationalAfter + localAfter;
+            const savings = taxBefore - taxAfter;
+
+            // 3. 절세 수익률
+            const roi = investmentWon > 0 ? (savings / investmentWon) * 100 : 0;
+
+            // 4. 결과 표시
+            deductionEl.textContent = formatManwon(deduction);
+            savingsEl.textContent = formatManwon(savings);
+            roiEl.textContent = formatPercent(roi);
+
+            [deductionEl, savingsEl, roiEl].forEach(el => {
+                el.classList.add('updated');
+                setTimeout(() => el.classList.remove('updated'), 500);
+            });
+
+            // 5. 세부 계산 내역
+            document.getElementById('detail-deduction-1').textContent = formatManwon(dedDetail.d1);
+            document.getElementById('detail-deduction-2').textContent = formatManwon(dedDetail.d2);
+            document.getElementById('detail-deduction-3').textContent = formatManwon(dedDetail.d3);
+            document.getElementById('detail-deduction-raw').textContent = formatManwon(dedDetail.raw);
+            document.getElementById('detail-deduction-limit').textContent = formatManwon(limit);
+            document.getElementById('detail-deduction-final').textContent = formatManwon(deduction);
+            document.getElementById('detail-taxable-before').textContent = formatManwon(taxableWon);
+            document.getElementById('detail-national-before').textContent = formatManwon(nationalBefore);
+            document.getElementById('detail-local-before').textContent = formatManwon(localBefore);
+            document.getElementById('detail-total-before').textContent = formatManwon(taxBefore);
+            document.getElementById('detail-taxable-after').textContent = formatManwon(taxableAfter);
+            document.getElementById('detail-national-after').textContent = formatManwon(nationalAfter);
+            document.getElementById('detail-local-after').textContent = formatManwon(localAfter);
+            document.getElementById('detail-total-after').textContent = formatManwon(taxAfter);
+            document.getElementById('detail-savings').textContent = formatManwon(savings);
+
+            resultSection.classList.remove('opacity-0', 'pointer-events-none');
+
+            // 계산 시 세부 내역 접기
+            document.getElementById('detail-content').classList.add('hidden');
+            document.getElementById('detail-toggle-icon').classList.remove('rotate-180');
+            document.getElementById('detail-toggle-text').textContent = '세부 계산 내역 펴기';
+        }
+
+        // 입력 필드 천단위 콤마 + 한글 금액 표시
+        document.getElementById('taxable-income').addEventListener('input', function () {
+            let v = this.value.replace(/[^0-9]/g, '');
+            this.value = v ? parseInt(v, 10).toLocaleString('ko-KR') : '';
+            updateKoreanHint('taxable-income', 'taxable-income-korean');
+        });
+        document.getElementById('investment-amount').addEventListener('input', function () {
+            let v = this.value.replace(/[^0-9]/g, '');
+            this.value = v ? parseInt(v, 10).toLocaleString('ko-KR') : '';
+            updateKoreanHint('investment-amount', 'investment-amount-korean');
+        });
+
+        // Enter 키로 계산
+        document.getElementById('investment-amount').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') calculate();
+        });
+        document.getElementById('taxable-income').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') calculate();
+        });
+    </script>
+</body>
+</html>
