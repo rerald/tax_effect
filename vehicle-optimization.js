@@ -26,7 +26,7 @@ const CORPORATE_TAX_BRACKETS = [
 
 // 세법 상수
 const ANNUAL_COST_LIMIT = 15000000;   // 연간 비용 인정 한도 1,500만원 (운행기록부 미작성)
-const LOGBOOK_RECOGNITION_RATE = 0.8; // 운행일지 작성 시 비용 인정률 80%
+const LOGBOOK_RECOGNITION_RATE = 1.0; // 비용 인정률 100%
 const DEPRECIATION_LIMIT = 8000000;   // 감가상각비 상당액 한도 800만원
 const LEASE_RATE = 0.93;              // 리스 93%
 const RENT_RATE = 0.70;              // 장기렌트 70%
@@ -45,6 +45,9 @@ let surveyState = {
     answers: {},
     scores: { installment: 0, lease: 0, rent: 0 },
 };
+
+// 사업자 유형 ('individual' | 'corporate')
+let currentBusinessType = 'individual';
 
 // 설문 가점 로직 (명세서 기준)
 const SCORING_RULES = [
@@ -98,12 +101,43 @@ function getRecommendation() {
     return { optimal, alternative };
 }
 
+function toggleBusinessType(type) {
+    currentBusinessType = type;
+    document.getElementById('toggle-individual').classList.toggle('active', type === 'individual');
+    document.getElementById('toggle-corporate').classList.toggle('active', type === 'corporate');
+    document.getElementById('comp-header-title').textContent = type === 'individual' ? '개인사업자 명의' : '법인사업자 명의';
+    document.getElementById('comp-col-header').textContent = type === 'individual' ? '개인사업자 명의' : '법인사업자 명의';
+    if (typeof lastCalcResult !== 'undefined' && lastCalcResult) {
+        renderComparisonTable(lastCalcResult);
+    }
+}
+
+function toggleComparisonDetail() {
+    const detailEl = document.getElementById('comp-detail');
+    const iconEl = document.getElementById('comp-detail-icon');
+    const textEl = document.getElementById('comp-detail-toggle-text');
+    if (detailEl.classList.contains('hidden')) {
+        detailEl.classList.remove('hidden');
+        iconEl.textContent = '▼';
+        textEl.textContent = '세부내역 접기';
+    } else {
+        detailEl.classList.add('hidden');
+        iconEl.textContent = '▶';
+        textEl.textContent = '세부내역 펼치기';
+    }
+}
+
 function finishSurvey() {
     const { optimal, alternative } = getRecommendation();
 
     // Step 2 표시
     const step2 = document.getElementById('step2-section');
     step2.classList.remove('opacity-0', 'pointer-events-none');
+
+    // 사업자 유형 기본값
+    currentBusinessType = 'individual';
+    document.getElementById('toggle-individual').classList.add('active');
+    document.getElementById('toggle-corporate').classList.remove('active');
 
     // 추천 결과를 product-type에 반영
     const productSelect = document.getElementById('product-type');
@@ -157,21 +191,6 @@ function formatPercent(rate) {
     return (rate * 100).toFixed(1) + '%';
 }
 
-function toggleCaseDetail(caseNum) {
-    const detailEl = document.getElementById(`case${caseNum}-detail`);
-    const iconEl = document.getElementById(`case${caseNum}-icon`);
-    const textEl = document.getElementById(`case${caseNum}-toggle-text`);
-    if (!detailEl || !iconEl || !textEl) return;
-    if (detailEl.classList.contains('hidden')) {
-        detailEl.classList.remove('hidden');
-        iconEl.textContent = '▼';
-        textEl.textContent = '세부내역 접기';
-    } else {
-        detailEl.classList.add('hidden');
-        iconEl.textContent = '▶';
-        textEl.textContent = '세부내역 펼치기';
-    }
-}
 
 /**
  * 개인 차량 비용 충당을 위한 추가 급여 역산 (이분 탐색)
@@ -247,56 +266,92 @@ function formatDiffWon(diff) {
     return diff > 0 ? '+' + str : '-' + str;
 }
 
-function renderCaseResults({ case1, case2, case3, allowableCost, corpRate, indivRate, personalBurden, corpTaxSavingsFromAddSalary = 0, burdenAvoided = 0, vehicleCost = 0, indivTaxSaving = 0, indivInsuranceEffect = 0 }) {
-    document.getElementById('case1-annual').textContent = formatWon(case1);
-    document.getElementById('case1-5yr').textContent = formatWon(case1 * 5);
-    document.getElementById('case1-rate').textContent = formatPercent(corpRate);
-    document.getElementById('case1-allowable').textContent = formatWon(allowableCost);
+let lastCalcResult = null;
 
-    document.getElementById('case2-annual').textContent = formatWon(case2);
-    document.getElementById('case2-5yr').textContent = formatWon(case2 * 5);
-    document.getElementById('case2-rate').textContent = formatPercent(indivRate);
-    document.getElementById('case2-allowable').textContent = formatWon(allowableCost);
-    document.getElementById('case2-tax-saving').textContent = formatWon(indivTaxSaving);
-    document.getElementById('case2-insurance-effect').textContent = formatWon(indivInsuranceEffect);
+function renderComparisonTable(result) {
+    const isIndividual = currentBusinessType === 'individual';
+    const A = result.annualCost;
+    const C = result.personalBurden ? result.personalBurden.totalBurden : 0;
+    const D = result.corpTaxSavingsFromAddSalary || 0;
 
-    document.getElementById('case3-annual').textContent = formatWon(case3);
-    document.getElementById('case3-5yr').textContent = formatWon(case3 * 5);
-    document.getElementById('case3-rate').textContent = formatPercent(corpRate);
-    document.getElementById('case3-allowable').textContent = formatWon(allowableCost);
+    // 개인명의: 개인사업자 시 절감 0, 법인사업자 시 절감 ③(추가급여 비용처리 법인세 절감)
+    const personalSaving = isIndividual ? 0 : D;
+    const personalNetAnnual = A + (isIndividual ? 0 : C) - personalSaving;
+    const personalNet5yr = personalNetAnnual * 5;
 
-    const corpTaxEl = document.getElementById('case3-corp-tax-savings');
-    const burdenAvoidedEl = document.getElementById('case3-burden-avoided');
-    const burdenEl = document.getElementById('case3-burden');
-    const hasPersonalBurden = personalBurden && personalBurden.totalBurden > 0;
+    // 사업자명의: 개인사업자 시 소득세+4대보험, 법인사업자 시 ①(차량비용 법인세 절감)만
+    const businessSaving = isIndividual ? result.indivTaxSaving + result.indivInsuranceEffect : (result.corpVehicleTaxSaving || result.corpTaxSaving);
+    const businessNetAnnual = A - businessSaving;
+    const businessNet5yr = businessNetAnnual * 5;
 
-    if (corpTaxSavingsFromAddSalary > 0) {
-        corpTaxEl.classList.remove('hidden');
-        document.getElementById('case3-corp-tax-amount').textContent = '- ' + formatWon(corpTaxSavingsFromAddSalary);
+    document.getElementById('comp-personal-cost').textContent = formatWon(A);
+    document.getElementById('comp-business-cost').textContent = formatWon(A);
+
+    const extraRow = document.getElementById('comp-extra-burden-row');
+    const extra5yrRow = document.getElementById('comp-extra-burden-5yr-row');
+    if (isIndividual) {
+        extraRow.classList.add('hidden');
+        extra5yrRow.classList.add('hidden');
     } else {
-        corpTaxEl.classList.add('hidden');
+        extraRow.classList.remove('hidden');
+        extra5yrRow.classList.remove('hidden');
+        document.getElementById('comp-personal-extra').textContent = formatWon(C);
+        document.getElementById('comp-personal-extra-5yr').textContent = formatWon(C * 5);
     }
-    if (burdenAvoided > 0) {
-        burdenAvoidedEl.classList.remove('hidden');
-        document.getElementById('case3-burden-amount').textContent = formatWon(burdenAvoided);
+
+    document.getElementById('comp-personal-saving').textContent = personalSaving > 0 ? formatWon(personalSaving) : '0';
+    document.getElementById('comp-business-saving').textContent = formatWon(businessSaving);
+    document.getElementById('comp-personal-net').textContent = formatWon(personalNetAnnual);
+    document.getElementById('comp-business-net').textContent = formatWon(businessNetAnnual);
+
+    document.getElementById('comp-personal-cost-5yr').textContent = formatWon(A * 5);
+    document.getElementById('comp-business-cost-5yr').textContent = formatWon(A * 5);
+    document.getElementById('comp-personal-saving-5yr').textContent = personalSaving > 0 ? formatWon(personalSaving * 5) : '0';
+    document.getElementById('comp-business-saving-5yr').textContent = formatWon(businessSaving * 5);
+    document.getElementById('comp-personal-net-5yr').textContent = formatWon(personalNet5yr);
+    document.getElementById('comp-business-net-5yr').textContent = formatWon(businessNet5yr);
+
+    // 연간/5년간 절세효과 (개인명의 대비 사업자명의 선택 시 절약액)
+    const annualEffect = personalNetAnnual - businessNetAnnual;
+    const effect5yr = personalNet5yr - businessNet5yr;
+    document.getElementById('comp-annual-effect').textContent = formatWon(annualEffect) + ' (개인명의 대비 절약)';
+    document.getElementById('comp-5yr-effect').textContent = formatWon(effect5yr) + ' (개인명의 대비 절약)';
+
+    // 세부내역
+    document.getElementById('comp-rate').textContent = formatPercent(isIndividual ? result.indivRate : result.corpRate);
+    document.getElementById('comp-allowable').textContent = formatWon(result.allowableCost);
+
+    const indivBreakdown = document.getElementById('comp-indiv-breakdown');
+    const corpBreakdown = document.getElementById('comp-corp-breakdown');
+    const corpBurden = document.getElementById('comp-corp-burden');
+    const corpPersonalSaving = document.getElementById('comp-corp-personal-saving');
+    if (isIndividual) {
+        indivBreakdown.classList.remove('hidden');
+        corpBreakdown.classList.add('hidden');
+        corpBurden.classList.add('hidden');
+        if (corpPersonalSaving) corpPersonalSaving.classList.add('hidden');
+        document.getElementById('comp-indiv-tax').textContent = formatWon(result.indivTaxSaving);
+        document.getElementById('comp-indiv-insurance').textContent = formatWon(result.indivInsuranceEffect);
     } else {
-        burdenAvoidedEl.classList.add('hidden');
-    }
-    if (hasPersonalBurden) {
-        burdenEl.classList.remove('hidden');
-        const calcDescEl = document.getElementById('case3-add-gross-calc-desc');
-        if (calcDescEl) {
-            calcDescEl.innerHTML = `연간 차량 비용 <strong>${formatWon(vehicleCost)}</strong>을 실수령으로 확보하려면 세전 추가 급여를 역산합니다. (추가급여 − 소득세 − 근로자4대보험) = 차량비용 이 되도록 이분탐색으로 산출.`;
+        indivBreakdown.classList.add('hidden');
+        corpBreakdown.classList.remove('hidden');
+        document.getElementById('comp-corp-vehicle-tax').textContent = formatWon(result.corpVehicleTaxSaving || 0);
+        if (corpPersonalSaving) {
+            corpPersonalSaving.classList.remove('hidden');
+            document.getElementById('comp-corp-add-salary-tax-val').textContent = formatWon(D);
         }
-        document.getElementById('case3-add-gross').textContent = formatWon(personalBurden.addGross);
-        document.getElementById('case3-add-tax').textContent = formatWon(personalBurden.addIncomeTax);
-        document.getElementById('case3-add-empr').textContent = formatWon(personalBurden.addEmployerIns);
-        document.getElementById('case3-total-burden').textContent = formatWon(personalBurden.totalBurden);
-    } else {
-        burdenEl.classList.add('hidden');
+        if (result.personalBurden && result.personalBurden.totalBurden > 0) {
+            corpBurden.classList.remove('hidden');
+            document.getElementById('comp-add-gross').textContent = formatWon(result.personalBurden.addGross);
+            document.getElementById('comp-add-tax').textContent = formatWon(result.personalBurden.addIncomeTax);
+            document.getElementById('comp-add-empr').textContent = formatWon(result.personalBurden.addEmployerIns);
+            document.getElementById('comp-total-burden').textContent = formatWon(result.personalBurden.totalBurden);
+        } else {
+            corpBurden.classList.add('hidden');
+        }
     }
 
-    ['case1-annual', 'case1-5yr', 'case2-annual', 'case2-5yr', 'case3-annual', 'case3-5yr'].forEach(id => {
+    ['comp-personal-net', 'comp-business-net', 'comp-personal-net-5yr', 'comp-business-net-5yr'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
             el.classList.add('updated');
@@ -331,47 +386,43 @@ function calculateTaxSavings() {
     const annualCost = monthlyFeeForCalc * 12 + maintenance;
     const allowableCost = Math.round(annualCost * LOGBOOK_RECOGNITION_RATE);
 
-    const case1 = Math.round(allowableCost * corpRate);
     const vehicleCost = annualCost;
     const personalBurden = typeof calcNetFromGross === 'function'
         ? calcAdditionalGrossForVehicleCost(repSalary, vehicleCost, 1)
         : { addGross: 0, addIncomeTax: 0, addEmployeeIns: 0, addEmployerIns: 0, totalBurden: 0 };
 
-    // 개인사업자: 소득세 절감 + 4대보험(국민연금·건강보험) 전체 효과
+    // 개인사업자: 소득세 절감 + 4대보험 효과
     const indivTaxSaving = Math.round(allowableCost * indivRate);
     const indivInsuranceEffect = personalBurden.addEmployeeIns + personalBurden.addEmployerIns;
-    const case2 = indivTaxSaving + indivInsuranceEffect;
 
-    // 대표자 추가급여처리로 인한 법인세 절세효과: (추가 급여 + 사업주 4대보험) × 법인세율
+    // 법인사업자: ① 차량비용 법인세 절감 (법인사업자 명의), ③ 추가급여 비용처리 법인세 절감 (개인명의 시)
+    const corpVehicleTaxSaving = Math.round(allowableCost * corpRate);
     const corpTaxSavingsFromAddSalary = Math.round(
         (personalBurden.addGross + personalBurden.addEmployerIns) * corpRate
     );
-    const burdenAvoided = personalBurden.totalBurden || 0;
-    const case3 = case1 + burdenAvoided - corpTaxSavingsFromAddSalary;
 
-    renderCaseResults({
-        case1,
-        case2,
-        case3,
+    lastCalcResult = {
+        annualCost,
         allowableCost,
         corpRate,
         indivRate,
         personalBurden,
-        corpTaxSavingsFromAddSalary,
-        burdenAvoided,
-        vehicleCost,
         indivTaxSaving,
         indivInsuranceEffect,
-    });
+        corpTaxSaving: corpVehicleTaxSaving,
+        corpVehicleTaxSaving,
+        corpTaxSavingsFromAddSalary,
+    };
 
-    [1, 2, 3].forEach(n => {
-        const detailEl = document.getElementById(`case${n}-detail`);
-        const iconEl = document.getElementById(`case${n}-icon`);
-        const textEl = document.getElementById(`case${n}-toggle-text`);
-        if (detailEl) detailEl.classList.add('hidden');
-        if (iconEl) iconEl.textContent = '▶';
-        if (textEl) textEl.textContent = '세부내역 펼치기';
-    });
+    renderComparisonTable(lastCalcResult);
+
+    // 세부내역 접기
+    const detailEl = document.getElementById('comp-detail');
+    if (detailEl) detailEl.classList.add('hidden');
+    const iconEl = document.getElementById('comp-detail-icon');
+    const textEl = document.getElementById('comp-detail-toggle-text');
+    if (iconEl) iconEl.textContent = '▶';
+    if (textEl) textEl.textContent = '세부내역 펼치기';
 
     const greenWarning = document.getElementById('green-plate-warning');
     if (vehiclePrice >= GREEN_PLATE_THRESHOLD) {

@@ -30,6 +30,9 @@
             50% { opacity: 0.7; }
         }
         input[type="text"]:focus, input[type="number"]:focus, select:focus { outline: none; }
+        .business-toggle { background: #f1f5f9; color: #64748b; }
+        .business-toggle.active { background: #1e3a5f; color: white; }
+        .business-toggle:hover:not(.active) { background: #e2e8f0; }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen">
@@ -112,6 +115,21 @@
                     <h2 class="text-lg font-semibold text-navy mb-4">Step 2. 절세 효과 계산</h2>
                     <p class="text-slate-600 text-sm mb-6">차량 정보와 대표 연봉을 입력하여 절세 효과를 확인하세요.</p>
 
+                    <!-- 사업자 유형 토글 -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-slate-700 mb-2">사업자 유형</label>
+                        <div class="flex rounded-xl overflow-hidden border-2 border-slate-200">
+                            <button type="button" id="toggle-individual" onclick="toggleBusinessType('individual')"
+                                class="flex-1 py-2.5 px-4 text-sm font-medium transition-all business-toggle active">
+                                개인사업자
+                            </button>
+                            <button type="button" id="toggle-corporate" onclick="toggleBusinessType('corporate')"
+                                class="flex-1 py-2.5 px-4 text-sm font-medium transition-all business-toggle">
+                                법인사업자
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="space-y-4">
                         <div>
                             <label for="vehicle-price" class="block text-sm font-medium text-slate-700 mb-1">차량 가액 (원)</label>
@@ -153,116 +171,108 @@
                     </button>
                 </div>
 
-                <!-- 우측: Case 1/2/3 결과 (3열 횡배열) -->
+                <!-- 우측: 2열 비교표 (개인명의 vs 사업자명의) -->
                 <div class="lg:col-span-3">
                     <div id="recommendation-summary" class="mb-4 p-3 bg-accent/10 rounded-lg text-sm text-slate-700 hidden"></div>
                     <div id="green-plate-warning" class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800 hidden"></div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <!-- Case 1: 단순절세계산 -->
-                    <div class="bg-white rounded-2xl shadow-lg p-5 border border-slate-100 flex flex-col">
-                        <h3 class="text-base font-semibold text-navy mb-1 text-center">Case 1</h3>
-                        <p class="text-xs text-slate-500 mb-4 text-center">단순절세계산</p>
-                        <div class="space-y-2 flex-1">
-                            <div class="flex justify-between items-center py-2 border-b border-slate-100">
-                                <span class="text-sm text-slate-600">연간 절세액</span>
-                                <span id="case1-annual" class="font-bold text-accent result-value">-</span>
-                            </div>
-                            <div class="flex justify-between items-center py-2">
-                                <span class="text-sm text-slate-600">5년 절세액</span>
-                                <span id="case1-5yr" class="font-semibold text-navy result-value">-</span>
-                            </div>
+                    <div class="bg-white rounded-2xl shadow-lg p-6 border border-slate-100">
+                        <h3 class="text-base font-semibold text-navy mb-4 text-center">개인명의 vs <span id="comp-header-title">개인사업자 명의</span></h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="border-b border-slate-200">
+                                        <th class="text-left py-3 px-2 font-medium text-slate-700 w-1/3">구분</th>
+                                        <th class="text-right py-3 px-2 font-medium text-slate-700">개인명의</th>
+                                        <th class="text-right py-3 px-2 font-medium text-accent" id="comp-col-header">개인사업자 명의</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="border-b border-slate-100">
+                                        <td class="py-3 px-2 text-slate-600">연간 총비용지출액</td>
+                                        <td class="py-3 px-2 text-right" id="comp-personal-cost">-</td>
+                                        <td class="py-3 px-2 text-right" id="comp-business-cost">-</td>
+                                    </tr>
+                                    <tr id="comp-extra-burden-row" class="border-b border-slate-100 hidden">
+                                        <td class="py-3 px-2 text-slate-600">추가 세부담 <span class="text-slate-400 text-xs">(개인명의 시)</span></td>
+                                        <td class="py-3 px-2 text-right" id="comp-personal-extra">-</td>
+                                        <td class="py-3 px-2 text-right text-slate-400">0</td>
+                                    </tr>
+                                    <tr class="border-b border-slate-100">
+                                        <td class="py-3 px-2 text-slate-600">연간 절감액</td>
+                                        <td class="py-3 px-2 text-right" id="comp-personal-saving">0</td>
+                                        <td class="py-3 px-2 text-right font-medium text-accent" id="comp-business-saving">-</td>
+                                    </tr>
+                                    <tr class="border-b-2 border-slate-200 bg-slate-50/50">
+                                        <td class="py-3 px-2 font-medium text-slate-700">연간 순부담액</td>
+                                        <td class="py-3 px-2 text-right font-bold" id="comp-personal-net">-</td>
+                                        <td class="py-3 px-2 text-right font-bold text-accent" id="comp-business-net">-</td>
+                                    </tr>
+                                    <tr class="border-b border-slate-100">
+                                        <td class="py-3 px-2 text-slate-600">5년 총비용지출액</td>
+                                        <td class="py-3 px-2 text-right" id="comp-personal-cost-5yr">-</td>
+                                        <td class="py-3 px-2 text-right" id="comp-business-cost-5yr">-</td>
+                                    </tr>
+                                    <tr id="comp-extra-burden-5yr-row" class="border-b border-slate-100 hidden">
+                                        <td class="py-3 px-2 text-slate-600">5년 추가 세부담</td>
+                                        <td class="py-3 px-2 text-right" id="comp-personal-extra-5yr">-</td>
+                                        <td class="py-3 px-2 text-right text-slate-400">0</td>
+                                    </tr>
+                                    <tr class="border-b border-slate-100">
+                                        <td class="py-3 px-2 text-slate-600">5년 절감액</td>
+                                        <td class="py-3 px-2 text-right" id="comp-personal-saving-5yr">0</td>
+                                        <td class="py-3 px-2 text-right font-medium text-accent" id="comp-business-saving-5yr">-</td>
+                                    </tr>
+                                    <tr class="border-b-2 border-slate-200 bg-slate-50/50">
+                                        <td class="py-3 px-2 font-medium text-slate-700">5년 순부담액</td>
+                                        <td class="py-3 px-2 text-right font-bold" id="comp-personal-net-5yr">-</td>
+                                        <td class="py-3 px-2 text-right font-bold text-accent" id="comp-business-net-5yr">-</td>
+                                    </tr>
+                                    <tr class="bg-accent/5">
+                                        <td class="py-3 px-2 font-medium text-slate-700">연간 절세효과</td>
+                                        <td colspan="2" class="py-3 px-2 text-right font-bold text-accent" id="comp-annual-effect">-</td>
+                                    </tr>
+                                    <tr class="bg-accent/5">
+                                        <td class="py-3 px-2 font-medium text-slate-700">5년간 절세효과</td>
+                                        <td colspan="2" class="py-3 px-2 text-right font-bold text-accent" id="comp-5yr-effect">-</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                         <div class="mt-4 pt-4 border-t border-slate-100">
-                            <button type="button" onclick="toggleCaseDetail(1)" class="flex items-center gap-2 w-full py-2 text-xs font-medium text-slate-600 hover:text-accent">
-                                <span id="case1-icon">▶</span>
-                                <span id="case1-toggle-text">세부내역 펼치기</span>
+                            <button type="button" onclick="toggleComparisonDetail()" class="flex items-center gap-2 w-full py-2 text-xs font-medium text-slate-600 hover:text-accent">
+                                <span id="comp-detail-icon">▶</span>
+                                <span id="comp-detail-toggle-text">세부내역 펼치기</span>
                             </button>
-                            <div id="case1-detail" class="hidden mt-3 space-y-2 text-sm">
-                                <div class="flex justify-between"><span class="text-slate-600">적용 한계세율</span><span id="case1-rate">-</span></div>
-                                <div class="flex justify-between"><span class="text-slate-600">연간 비용 인정액</span><span id="case1-allowable">-</span></div>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- 개인명의대비 절세효과 (Case 2·3 합병) -->
-                    <div class="md:col-span-2 bg-white rounded-2xl shadow-lg p-5 border border-slate-100">
-                        <h3 class="text-base font-semibold text-navy mb-1 text-center">개인명의대비 절세효과</h3>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                        <!-- 개인사업자 -->
-                        <div class="flex flex-col sm:border-r sm:border-slate-100 sm:pr-4">
-                        <p class="text-xs font-medium text-slate-600 mb-3 text-center">개인사업자</p>
-                        <div class="space-y-2 flex-1">
-                            <div class="flex justify-between items-center py-2 border-b border-slate-100">
-                                <span class="text-sm text-slate-600">연간 절세액</span>
-                                <span id="case2-annual" class="font-bold text-accent result-value">-</span>
-                            </div>
-                            <div class="flex justify-between items-center py-2">
-                                <span class="text-sm text-slate-600">5년 절세액</span>
-                                <span id="case2-5yr" class="font-semibold text-navy result-value">-</span>
-                            </div>
-                        </div>
-                        <div class="mt-4 pt-4 border-t border-slate-100">
-                            <button type="button" onclick="toggleCaseDetail(2)" class="flex items-center gap-2 w-full py-2 text-xs font-medium text-slate-600 hover:text-accent">
-                                <span id="case2-icon">▶</span>
-                                <span id="case2-toggle-text">세부내역 펼치기</span>
-                            </button>
-                            <div id="case2-detail" class="hidden mt-3 space-y-2 text-sm">
-                                <div class="flex justify-between"><span class="text-slate-600">적용 한계세율</span><span id="case2-rate">-</span></div>
-                                <div class="flex justify-between"><span class="text-slate-600">연간 비용 인정액</span><span id="case2-allowable">-</span></div>
-                                <div class="pt-2 border-t border-slate-100">
-                                    <div class="flex justify-between"><span class="text-slate-600">소득세 절감액</span><span id="case2-tax-saving">-</span></div>
-                                    <div class="flex justify-between"><span class="text-slate-600">4대보험 효과 <span class="text-slate-400 font-normal">(국민연금·건강보험 전체)</span></span><span id="case2-insurance-effect">-</span></div>
+                            <div id="comp-detail" class="hidden mt-3 space-y-2 text-sm">
+                                <div class="flex justify-between"><span class="text-slate-600">적용 한계세율</span><span id="comp-rate">-</span></div>
+                                <div id="comp-corp-burden" class="hidden pt-2 border-t border-slate-100">
+                                    <h4 class="text-xs font-semibold text-slate-700 mb-2">개인 차량 사용 시 추가 부담 (법인사업자의 경우)</h4>
+                                    <p class="text-xs text-slate-600 mb-2">대표가 차량 비용을 개인으로 부담하려면 추가 급여가 필요하며, 소득세·4대보험 부담이 발생합니다.</p>
+                                    <div class="space-y-1 text-xs">
+                                        <div class="flex justify-between"><span class="text-slate-600">필요한 추가 급여</span><span id="comp-add-gross">-</span></div>
+                                        <div class="flex justify-between"><span class="text-slate-600">추가 소득세</span><span id="comp-add-tax">-</span></div>
+                                        <div class="flex justify-between"><span class="text-slate-600">추가 4대보험(사업주)</span><span id="comp-add-empr">-</span></div>
+                                        <div class="flex justify-between font-medium pt-1"><span class="text-slate-600">총 추가 부담</span><span id="comp-total-burden">-</span></div>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between"><span class="text-slate-600">연간 절감액</span><span id="comp-allowable">-</span></div>
+                                <div id="comp-indiv-breakdown" class="pt-2 border-t border-slate-100 hidden">
+                                    <div class="flex justify-between"><span class="text-slate-600">소득세 절감액</span><span id="comp-indiv-tax">-</span></div>
+                                    <div class="flex justify-between"><span class="text-slate-600">4대보험 효과</span><span id="comp-indiv-insurance">-</span></div>
+                                </div>
+                                <div id="comp-corp-breakdown" class="hidden pt-2 border-t border-slate-100">
+                                    <div id="comp-corp-personal-saving" class="hidden">
+                                        <div class="flex justify-between"><span class="text-slate-600">① 추가급여 비용처리 시 법인세 절감 (개인명의 시)</span><span id="comp-corp-add-salary-tax-val">-</span></div>
+                                    </div>
+                                    <div class="flex justify-between"><span class="text-slate-600">② 차량비용 법인세 절감 (사업자명의 시)</span><span id="comp-corp-vehicle-tax">-</span></div>
                                 </div>
                             </div>
                         </div>
-                        </div>
-                        <!-- 법인사업자 -->
-                        <div class="flex flex-col sm:pl-4">
-                        <p class="text-xs font-medium text-slate-600 mb-3 text-center">법인사업자</p>
-                        <div class="space-y-2 flex-1">
-                            <div class="flex justify-between items-center py-2 border-b border-slate-100">
-                                <span class="text-sm text-slate-600">연간 절세액</span>
-                                <span id="case3-annual" class="font-bold text-accent result-value">-</span>
-                            </div>
-                            <div class="flex justify-between items-center py-2">
-                                <span class="text-sm text-slate-600">5년 절세액</span>
-                                <span id="case3-5yr" class="font-semibold text-navy result-value">-</span>
-                            </div>
-                        </div>
-                        <div class="mt-4 pt-4 border-t border-slate-100">
-                            <button type="button" onclick="toggleCaseDetail(3)" class="flex items-center gap-2 w-full py-2 text-xs font-medium text-slate-600 hover:text-accent">
-                                <span id="case3-icon">▶</span>
-                                <span id="case3-toggle-text">세부내역 펼치기</span>
-                            </button>
-                            <div id="case3-detail" class="hidden mt-3 space-y-2 text-sm">
-                                <div class="flex justify-between"><span class="text-slate-600">적용 한계세율</span><span id="case3-rate">-</span></div>
-                                <div class="flex justify-between"><span class="text-slate-600">연간 비용 인정액</span><span id="case3-allowable">-</span></div>
-                                <div id="case3-corp-tax-savings" class="hidden pt-2 border-t border-slate-100">
-                                    <div class="flex justify-between text-sm"><span class="text-slate-600">급여 비용처리 시 법인세 절감 (차감)</span><span id="case3-corp-tax-amount">-</span></div>
-                                </div>
-                                <div id="case3-burden-avoided" class="hidden pt-2">
-                                    <div class="flex justify-between text-sm"><span class="text-slate-600">개인 차량 사용 시 추가 부담 회피</span><span id="case3-burden-amount">-</span></div>
-                                </div>
-                                <div id="case3-burden" class="hidden pt-3 border-t border-slate-100">
-                                    <h4 class="text-xs font-semibold text-slate-700 mb-2">개인 차량 사용 시 추가 부담</h4>
-                                    <p class="text-xs text-slate-600 mb-2">대표가 차량 비용을 개인으로 부담하려면 추가 급여가 필요하며, 소득세·4대보험 부담이 발생합니다. 법인 차량은 이 부담이 없습니다.</p>
-                                    <div id="case3-add-gross-calc-desc" class="mb-2 p-2 bg-slate-50 rounded text-xs text-slate-600"></div>
-                                    <ul class="space-y-1 text-xs">
-                                        <li class="flex justify-between"><span>필요한 추가 급여</span><span id="case3-add-gross">-</span></li>
-                                        <li class="flex justify-between"><span>추가 소득세</span><span id="case3-add-tax">-</span></li>
-                                        <li class="flex justify-between"><span>추가 4대보험(사업주)</span><span id="case3-add-empr">-</span></li>
-                                        <li class="flex justify-between font-medium pt-1"><span>총 추가 부담 <span class="text-slate-400 font-normal">(소득세+사업주4대보험)</span></span><span id="case3-total-burden">-</span></li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        </div>
-                        </div>
-                    </div>
                     </div>
                 </div>
             </div>
             <div class="mt-4 px-2 text-xs text-slate-500">
-                ※ 소득세법 시행령 제78조의3 기준 (차량운행일지 작성 전제, 연간 비용의 80% 인정)
+                ※ 소득세법 시행령 제78조의3 기준 (차량운행일지 작성 전제, 연간 비용의 100% 인정)
             </div>
         </section>
     </div>
