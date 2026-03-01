@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>세율 수첩 - 법인세율·소득세율 참고</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        .tax-ref-container { max-width: 900px; margin: 0 auto; padding: 20px; }
+        .tax-ref-header {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px 24px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 24px;
+            backdrop-filter: blur(10px);
+        }
+        .tax-ref-header h1 { font-size: 2rem; font-weight: 700; color: #2c3e50; margin-bottom: 12px; }
+        .tax-ref-header .subtitle { font-size: 1rem; color: #7f8c8d; }
+        .tax-ref-nav {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px 24px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 24px;
+            backdrop-filter: blur(10px);
+        }
+        .tax-ref-nav h3 { font-size: 1rem; color: #2c3e50; margin-bottom: 12px; }
+        .tax-ref-nav a {
+            display: inline-block;
+            margin: 4px 12px 4px 0;
+            color: #2563eb;
+            text-decoration: none;
+            font-size: 0.95rem;
+        }
+        .tax-ref-nav a:hover { text-decoration: underline; }
+        .tax-ref-section {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 28px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 24px;
+            backdrop-filter: blur(10px);
+        }
+        .tax-ref-section h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #3498db;
+        }
+        .tax-ref-section h3 { font-size: 1rem; color: #34495e; margin: 16px 0 8px; }
+        .tax-ref-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+            margin: 12px 0;
+        }
+        .tax-ref-table th, .tax-ref-table td {
+            padding: 10px 14px;
+            border: 1px solid #e0e0e0;
+            text-align: left;
+        }
+        .tax-ref-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        .tax-ref-table tr:nth-child(even) { background: #fafafa; }
+        .tax-ref-table .num { text-align: right; }
+        .tax-ref-note { font-size: 0.85rem; color: #7f8c8d; margin-top: 12px; }
+        .tax-ref-list { margin: 8px 0; padding-left: 20px; line-height: 1.8; }
+    </style>
+</head>
+<body>
+    <div class="tax-ref-container">
+        <header class="tax-ref-header">
+            <h1>세율 수첩</h1>
+            <p class="subtitle">법인세율, 소득세율, 공제율 등 잊기 쉬운 세금 참고 정보를 한눈에 확인합니다.</p>
+            <p class="subtitle" style="margin-top: 0.5rem;">
+                <a href="index.html" style="color: #2563eb; text-decoration: underline;">대시보드로 돌아가기</a>
+            </p>
+        </header>
+
+        <nav class="tax-ref-nav">
+            <h3>바로가기</h3>
+            <a href="#income-tax">종합소득세 세율표</a>
+            <a href="#corporate-tax">법인세 세율표</a>
+            <a href="#local-tax">지방소득세</a>
+            <a href="#deductions">주요 공제 요약</a>
+            <a href="#social-insurance">4대보험료 요율</a>
+            <a href="#disclaimer">참고 사항</a>
+        </nav>
+
+        <section id="income-tax" class="tax-ref-section">
+            <h2>A. 종합소득세 세율표 (2025년)</h2>
+            <p>과세표준 구간별 세율 및 누진공제액 (연간 기준)</p>
+            <table class="tax-ref-table">
+                <thead>
+                    <tr>
+                        <th>과세표준 구간</th>
+                        <th class="num">세율</th>
+                        <th class="num">누진공제액</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>1,400만원 이하</td><td class="num">6%</td><td class="num">0원</td></tr>
+                    <tr><td>1,400만원 초과 ~ 5,000만원</td><td class="num">15%</td><td class="num">126만원</td></tr>
+                    <tr><td>5,000만원 초과 ~ 8,800만원</td><td class="num">24%</td><td class="num">576만원</td></tr>
+                    <tr><td>8,800만원 초과 ~ 1.5억원</td><td class="num">35%</td><td class="num">1,544만원</td></tr>
+                    <tr><td>1.5억원 초과 ~ 3억원</td><td class="num">38%</td><td class="num">1,944만원</td></tr>
+                    <tr><td>3억원 초과 ~ 5억원</td><td class="num">40%</td><td class="num">2,594만원</td></tr>
+                    <tr><td>5억원 초과 ~ 10억원</td><td class="num">42%</td><td class="num">3,594만원</td></tr>
+                    <tr><td>10억원 초과</td><td class="num">45%</td><td class="num">6,594만원</td></tr>
+                </tbody>
+            </table>
+            <p class="tax-ref-note">산출세액 = 과세표준 × 세율 − 누진공제액</p>
+        </section>
+
+        <section id="corporate-tax" class="tax-ref-section">
+            <h2>B. 법인세 세율표 (2025년, 영리법인 각사업연도소득)</h2>
+            <p>소득 구간별 세율 및 누진공제액</p>
+            <table class="tax-ref-table">
+                <thead>
+                    <tr>
+                        <th>과세표준 구간</th>
+                        <th class="num">세율</th>
+                        <th class="num">누진공제액</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>2억원 이하</td><td class="num">9%</td><td class="num">0원</td></tr>
+                    <tr><td>2억원 초과 ~ 200억원</td><td class="num">19%</td><td class="num">2,000만원</td></tr>
+                    <tr><td>200억원 초과 ~ 3,000억원</td><td class="num">21%</td><td class="num">4억 2,000만원</td></tr>
+                    <tr><td>3,000억원 초과</td><td class="num">24%</td><td class="num">94억 2,000만원</td></tr>
+                </tbody>
+            </table>
+            <p class="tax-ref-note">법인세 산출세액 = 과세표준 × 세율 − 누진공제액</p>
+        </section>
+
+        <section id="local-tax" class="tax-ref-section">
+            <h2>C. 지방소득세</h2>
+            <p>종합소득세 산출세액의 <strong>10%</strong></p>
+            <p class="tax-ref-note">지방소득세 = 종합소득세 산출세액 × 10%</p>
+        </section>
+
+        <section id="deductions" class="tax-ref-section">
+            <h2>D. 주요 공제 요약</h2>
+
+            <h3>인적공제</h3>
+            <ul class="tax-ref-list">
+                <li>본인: 150만원</li>
+                <li>부양가족 1인당: 150만원</li>
+            </ul>
+
+            <h3>근로소득공제 (연간 총급여 기준)</h3>
+            <table class="tax-ref-table">
+                <thead>
+                    <tr>
+                        <th>급여 구간</th>
+                        <th>공제 공식</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>500만원 이하</td><td>총급여액 × 70%</td></tr>
+                    <tr><td>500만원 초과 ~ 1,500만원</td><td>총급여액 × 40% + 150만원</td></tr>
+                    <tr><td>1,500만원 초과 ~ 4,500만원</td><td>총급여액 × 15% + 525만원</td></tr>
+                    <tr><td>4,500만원 초과 ~ 1억원</td><td>총급여액 × 5% + 975만원</td></tr>
+                    <tr><td>1억원 초과</td><td>총급여액 × 2% + 1,275만원</td></tr>
+                </tbody>
+            </table>
+            <p class="tax-ref-note">근로소득공제액은 총급여액을 초과할 수 없음</p>
+
+            <h3>근로소득세액공제</h3>
+            <ul class="tax-ref-list">
+                <li>산출세액의 55%</li>
+                <li>최대: 66만원</li>
+            </ul>
+
+            <h3>배당세액공제</h3>
+            <ul class="tax-ref-list">
+                <li>2천만원 이하: (배당소득 + Gross-up) × 16.5%</li>
+                <li>2천만원 초과분: 배당소득 × 5%</li>
+            </ul>
+            <p class="tax-ref-note">16.5%는 법인세율(11%) + 지방소득세(1.1%) + 조정률을 반영한 이중과세 조정 공제</p>
+        </section>
+
+        <section id="social-insurance" class="tax-ref-section">
+            <h2>E. 4대보험료 요율 (2025년)</h2>
+            <table class="tax-ref-table">
+                <thead>
+                    <tr>
+                        <th>보험종목</th>
+                        <th class="num">근로자 부담</th>
+                        <th class="num">사업주 부담</th>
+                        <th>비고</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>국민연금</td><td class="num">4.5%</td><td class="num">4.5%</td><td>상한: 월 574만원 (연 6,888만원)</td></tr>
+                    <tr><td>건강보험</td><td class="num">3.55%</td><td class="num">3.55%</td><td>평균 요율</td></tr>
+                    <tr><td>장기요양보험</td><td class="num">건강보험료의 12.95%</td><td class="num">건강보험료의 12.95%</td><td>건강보험에 부가</td></tr>
+                    <tr><td>고용보험</td><td class="num">0.9%</td><td class="num">0.9%</td><td>임원은 제외</td></tr>
+                    <tr><td>산재보험</td><td class="num">-</td><td class="num">0.7%</td><td>사업주만 부담, 업종별 상이 (0.56%~18.56%)</td></tr>
+                </tbody>
+            </table>
+            <p class="tax-ref-note">임원은 고용보험·산재보험 제외. 산재보험은 업종별 요율이 다름.</p>
+        </section>
+
+        <section id="disclaimer" class="tax-ref-section">
+            <h2>F. 참고 사항</h2>
+            <ul class="tax-ref-list">
+                <li>본 수첩의 세율·공제는 <strong>2025년 기준</strong>입니다.</li>
+                <li>실제 세액은 개인·법인 상황(비과세, 소득공제, 세액공제 등)에 따라 달라질 수 있습니다.</li>
+                <li>법적·세무적 자문이 필요한 경우 전문가와 상담하시기 바랍니다.</li>
+            </ul>
+        </section>
+    </div>
+</body>
+</html>
