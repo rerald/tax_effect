@@ -246,7 +246,7 @@ function displayResults(individual, corporateA, corporateB, optimal, savings, bu
     const maxSavings = Math.max(totalSavingsA, totalSavingsB);
     highlightEl.className = 'savings-highlight ' + (maxSavings > 0 ? 'savings-positive' : 'savings-negative');
     const goodwillNote = (corporateA.goodwillDepreciation || 0) > 0 ? ' (영업권 절세 포함)' : '';
-    highlightEl.innerHTML = `A경우 절세액 ${formatCurrency(totalSavingsA)} (사용자 설정) | B경우 절세액 ${formatCurrency(totalSavingsB)} (최적 추천)${goodwillNote}`;
+    highlightEl.innerHTML = `<span style="color:#e74c3c;font-weight:600;">매년</span> A경우 절세액 ${formatCurrency(totalSavingsA)} (사용자 설정) | <span style="color:#e74c3c;font-weight:600;">매년</span> B경우 절세액 ${formatCurrency(totalSavingsB)} (최적 추천)${goodwillNote}`;
 
     document.getElementById('ind-business-income').textContent = formatCurrency(individual.businessIncome);
     document.getElementById('ind-income-tax').textContent = formatCurrency(individual.incomeTax);
