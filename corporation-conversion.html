@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>법인전환 절세 시뮬레이션 (2025년 기준)</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        .ratio-slider-container { margin: 20px 0; }
+        .ratio-slider-container label { display: block; margin-bottom: 8px; font-weight: 500; }
+        .ratio-display { font-size: 1.1rem; color: #3498db; font-weight: 600; margin-top: 8px; }
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+            gap: 16px;
+            margin: 24px 0;
+        }
+        @media (max-width: 1100px) {
+            .comparison-grid { gap: 12px; }
+            .comparison-card { padding: 16px; }
+        }
+        @media (max-width: 768px) { .comparison-grid { grid-template-columns: 1fr; } }
+        .comparison-card {
+            min-width: 0;
+            overflow: hidden;
+            padding: 24px;
+            border-radius: 16px;
+            border: 2px solid #e1e8ed;
+        }
+        .comparison-card .scenario-table { min-width: 0; width: 100%; }
+        .comparison-card.individual { border-color: #e74c3c; background: rgba(231, 76, 60, 0.05); }
+        .comparison-card.corporate { border-color: #27ae60; background: rgba(39, 174, 96, 0.05); }
+        .comparison-card h4 { margin-bottom: 16px; font-size: 1.2rem; }
+        .savings-highlight {
+            font-size: 1.5rem;
+            font-weight: 700;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .savings-positive { background: rgba(39, 174, 96, 0.2); color: #27ae60; }
+        .savings-negative { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
+        .break-even-section { margin-top: 30px; padding-top: 24px; border-top: 2px solid #e1e8ed; }
+        .disclaimer-box { font-size: 0.9rem; color: #7f8c8d; margin-top: 24px; padding: 16px; background: #f8f9fa; border-radius: 10px; }
+        .net-row td { font-weight: 600; background: rgba(52, 152, 219, 0.08); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>법인전환 절세 시뮬레이션 (2025년 기준)</h1>
+            <p class="subtitle">개인사업자와 법인 전환 후의 총 세금 부담을 비교하여 절세 금액을 분석합니다</p>
+            <p class="subtitle" style="margin-top: 0.5rem;">
+                <a href="index.html" style="color: #2563eb; text-decoration: underline;">대시보드로 돌아가기</a>
+                &nbsp;|&nbsp;
+                <a href="corporate-income.html" style="color: #2563eb; text-decoration: underline;">법인소득처분 세금효과 →</a>
+            </p>
+        </header>
+
+        <div class="content">
+            <!-- 입력 섹션 -->
+            <div class="input-section">
+                <h2>기본 정보 입력</h2>
+                
+                <div class="input-group">
+                    <label for="business-income">연간 예상 사업소득 (순이익, 원)</label>
+                    <input type="text" id="business-income" placeholder="예: 150,000,000" class="currency-input">
+                </div>
+
+                <div class="input-group">
+                    <label for="family-count">부양가족 수 (본인 포함)</label>
+                    <select id="family-count">
+                        <option value="1">1명 (본인만)</option>
+                        <option value="2">2명</option>
+                        <option value="3">3명</option>
+                        <option value="4">4명</option>
+                        <option value="5">5명</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="goodwill-amount">법인전환 시 영업권 금액 (선택, 원)</label>
+                    <input type="text" id="goodwill-amount" placeholder="예: 50,000,000 (0이면 미반영)" class="currency-input">
+                    <p style="font-size: 0.85rem; color: #7f8c8d; margin-top: 6px;">5년 균등 상각비로 법인세 절감 + 급여/배당 대비 기타소득(8.8% 과세) 절세 효과 반영</p>
+                </div>
+
+                <div class="input-group">
+                    <label>법인 전환 시 급여/배당 비율</label>
+                    <div class="ratio-slider-container">
+                        <label for="salary-ratio">급여 비율: <span id="salary-ratio-value">70</span>% / 배당 비율: <span id="dividend-ratio-value">30</span>%</label>
+                        <input type="range" id="salary-ratio" min="20" max="90" value="70" step="5">
+                        <div class="ratio-display">급여 중심 ← → 배당 중심</div>
+                    </div>
+                </div>
+
+                <button class="calculate-button" onclick="calculateConversionEffect()">절세 효과 계산하기</button>
+            </div>
+
+            <!-- 결과 섹션 -->
+            <div class="results-section" id="results-section" style="display: none;">
+                <h2>절세 효과 분석 결과</h2>
+                
+                <div class="savings-highlight" id="savings-highlight">
+                    <!-- 동적 표시 -->
+                </div>
+
+                <div class="comparison-grid">
+                    <div class="comparison-card individual">
+                        <h4>개인사업자 (전환 전)</h4>
+                        <table class="scenario-table">
+                            <tbody>
+                                <tr><td>사업소득</td><td id="ind-business-income">-</td></tr>
+                                <tr><td>종합소득세</td><td id="ind-income-tax">-</td></tr>
+                                <tr><td>지방소득세</td><td id="ind-local-tax">-</td></tr>
+                                <tr><td>4대보험료</td><td id="ind-social">-</td></tr>
+                                <tr class="total-row"><td><strong>총 부담</strong></td><td id="ind-total-tax">-</td></tr>
+                                <tr class="net-row"><td><strong>순액</strong></td><td id="ind-net-amount">-</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="comparison-card corporate">
+                        <h4>법인 전환 후 A경우 <span class="case-subtitle" id="corp-a-subtitle">(사용자 설정 비율)</span></h4>
+                        <table class="scenario-table">
+                            <tbody>
+                                <tr><td>법인소득</td><td id="corp-a-income">-</td></tr>
+                                <tr id="corp-a-goodwill-row" style="display: none;"><td>영업권 상각비</td><td id="corp-a-goodwill-depreciation">-</td></tr>
+                                <tr><td>법인세</td><td id="corp-a-tax">-</td></tr>
+                                <tr><td>분배 가능 잔액</td><td id="corp-a-distributable">-</td></tr>
+                                <tr><td>급여 + 배당</td><td id="corp-a-disposal">-</td></tr>
+                                <tr id="corp-a-goodwill-income-row" style="display: none;"><td>영업권(기타소득)</td><td id="corp-a-goodwill-income">-</td></tr>
+                                <tr><td>개인소득세</td><td id="corp-a-personal-tax">-</td></tr>
+                                <tr id="corp-a-goodwill-tax-row" style="display: none;"><td>영업권 소득세</td><td id="corp-a-goodwill-tax">-</td></tr>
+                                <tr><td>지방소득세</td><td id="corp-a-local-tax">-</td></tr>
+                                <tr><td>4대보험료</td><td id="corp-a-social">-</td></tr>
+                                <tr class="total-row"><td><strong>총 부담</strong></td><td id="corp-a-total">-</td></tr>
+                                <tr class="net-row"><td><strong>순액</strong></td><td id="corp-a-net-amount">-</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="comparison-card corporate">
+                        <h4>법인 전환 후 B경우 <span class="case-subtitle" id="corp-b-subtitle">(최적 추천 비율)</span></h4>
+                        <table class="scenario-table">
+                            <tbody>
+                                <tr><td>법인소득</td><td id="corp-b-income">-</td></tr>
+                                <tr id="corp-b-goodwill-row" style="display: none;"><td>영업권 상각비</td><td id="corp-b-goodwill-depreciation">-</td></tr>
+                                <tr><td>법인세</td><td id="corp-b-tax">-</td></tr>
+                                <tr><td>분배 가능 잔액</td><td id="corp-b-distributable">-</td></tr>
+                                <tr><td>급여 + 배당</td><td id="corp-b-disposal">-</td></tr>
+                                <tr id="corp-b-goodwill-income-row" style="display: none;"><td>영업권(기타소득)</td><td id="corp-b-goodwill-income">-</td></tr>
+                                <tr><td>개인소득세</td><td id="corp-b-personal-tax">-</td></tr>
+                                <tr id="corp-b-goodwill-tax-row" style="display: none;"><td>영업권 소득세</td><td id="corp-b-goodwill-tax">-</td></tr>
+                                <tr><td>지방소득세</td><td id="corp-b-local-tax">-</td></tr>
+                                <tr><td>4대보험료</td><td id="corp-b-social">-</td></tr>
+                                <tr class="total-row"><td><strong>총 부담</strong></td><td id="corp-b-total">-</td></tr>
+                                <tr class="net-row"><td><strong>순액</strong></td><td id="corp-b-net-amount">-</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="summary-table" id="optimal-disposal-section">
+                    <h3>최적 소득처분 방식 추천</h3>
+                    <p id="optimal-disposal-desc">법인 전환 시 가장 유리한 급여/배당 비율을 추천합니다.</p>
+                    <p style="margin-top: 8px; font-size: 0.9rem; color: #7f8c8d;">총 부담 = 법인세 + 개인소득세 + 지방소득세 + 4대보험료</p>
+                    <table class="scenario-table" id="optimal-disposal-table" style="margin-top: 12px;">
+                        <thead>
+                            <tr>
+                                <th>케이스</th>
+                                <th>급여</th>
+                                <th>배당</th>
+                                <th>총 부담</th>
+                            </tr>
+                        </thead>
+                        <tbody id="optimal-disposal-tbody"></tbody>
+                    </table>
+                    <p style="margin-top: 12px;">
+                        <a id="optimal-disposal-link" href="corporate-income.html" class="card-btn" style="display: inline-block; padding: 10px 20px; text-decoration: none; color: white; border-radius: 10px;">법인소득처분 세금효과에서 상세 분석 →</a>
+                    </p>
+                </div>
+
+                <div class="summary-table">
+                    <h3>적정 전환 시점 안내</h3>
+                    <p id="conversion-tip">과세표준 약 8,800만원 초과 시 개인사업자의 한계세율(35%)이 법인세율(9~19%)보다 높아져 법인 전환이 유리해질 수 있습니다.</p>
+                </div>
+
+                <div class="disclaimer-box">
+                    <strong>참고 사항</strong>
+                    <ul style="margin: 8px 0 0 20px; line-height: 1.8;">
+                        <li>법인전환 후 5년 이내 50% 이상 지분 매각 시 양도소득세·취득세 환수 등 불이익이 발생할 수 있습니다.</li>
+                        <li>회계·세무 관리비, 기장 비용 등 추가 비용이 발생합니다.</li>
+                        <li>실제 적용 시 세무 전문가 상담을 권장합니다.</li>
+                    </ul>
+                    <p id="goodwill-analysis-note" style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #e1e8ed; display: none; font-size: 0.9rem; color: #5a6c7d; line-height: 1.7;"></p>
+                </div>
+            </div>
+
+            <!-- 브레이크이븐 분석 섹션 -->
+            <div class="results-section" id="break-even-section" style="display: none;">
+                <h2>소득구간별 브레이크이븐 분석</h2>
+                <p class="subtitle" style="margin-bottom: 20px;">연간 소득 구간별 개인 vs 법인 총세금 비교 (급여 70% / 배당 30% 기준)</p>
+                <div class="scenario-table-container">
+                    <table class="scenario-table" id="break-even-table">
+                        <thead>
+                            <tr>
+                                <th>연간 소득</th>
+                                <th>개인사업자 총세금</th>
+                                <th>법인 전환 후 총부담</th>
+                                <th>절세 효과</th>
+                            </tr>
+                        </thead>
+                        <tbody id="break-even-tbody">
+                        </tbody>
+                    </table>
+                </div>
+                <p id="break-even-point" class="ratio-display" style="margin-top: 16px;"></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script src="corporation-conversion.js"></script>
+</body>
+</html>

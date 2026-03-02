@@ -876,5 +876,18 @@
     </div>
 
     <script src="script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var params = new URLSearchParams(window.location.search);
+            var total = params.get('total');
+            if (total && document.getElementById('total-amount')) {
+                var num = parseInt(total, 10) || 0;
+                if (num > 0 && typeof formatNumberWithCommas === 'function') {
+                    document.getElementById('total-amount').value = formatNumberWithCommas(num);
+                    if (typeof updateAllCasesFromTotal === 'function') updateAllCasesFromTotal();
+                }
+            }
+        });
+    </script>
 </body>
 </html> 

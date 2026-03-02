@@ -414,6 +414,40 @@ function calculateCompanySocialInsurance(totalSalary) {
     };
 }
 
+// 직장가입자 소득월액보험료: 보수 외 소득(배당 등) 2천만원 초과 시 초과분에 대한 건강보험료
+const DIVIDEND_HEALTH_INSURANCE_THRESHOLD = 20000000;  // 배당 2천만원 초과분부터 부과
+const HEALTH_INSURANCE_FULL_RATE = 0.0709;             // 7.09% (소득월액보험료는 개인 전액 부담)
+
+/**
+ * 소득월액보험료 계산 - 직장가입자 보수 외 소득(배당·기타소득 등) 2천만원 초과분 (2025년 기준)
+ *
+ * 직장가입자라도 보수 외 소득(배당·기타소득 등)이 연 2천만원을 초과하면, 초과분에 대해 '소득월액보험료'가 추가 부과됨.
+ * 국민연금·고용보험·산재보험: 보수(급여)만 기준 → 보수 외 소득 미포함
+ * 건강보험: 보수 외 소득 2천만원 초과분에 대해 소득월액보험료 부과 (개인 부담만, 회사 부담분 없음)
+ *
+ * @param {number} incomeOtherThanWages - 연간 보수 외 소득 합계 (배당 + 기타소득 등)
+ * @returns {object} - 소득월액보험료 금액과 계산 설명
+ */
+function calculateIncomeBasedHealthInsurance(incomeOtherThanWages) {
+    if (isNaN(incomeOtherThanWages) || incomeOtherThanWages <= DIVIDEND_HEALTH_INSURANCE_THRESHOLD) {
+        return {
+            amount: 0,
+            explanation: '보수 외 소득 2천만원 이하: 소득월액보험료 없음'
+        };
+    }
+    const excess = incomeOtherThanWages - DIVIDEND_HEALTH_INSURANCE_THRESHOLD;
+    const healthFee = excess * HEALTH_INSURANCE_FULL_RATE;
+    const longTermCareFee = healthFee * SOCIAL_INSURANCE_2025.healthInsurance.longTermCareRate;
+    const total = healthFee + longTermCareFee;
+
+    return {
+        amount: Math.round(total),
+        healthInsurance: healthFee,
+        longTermCare: longTermCareFee,
+        explanation: `보수 외 소득 2천만원 초과분 ${formatCurrency(excess)} × 7.09% + 장기요양(건강보험료 × 12.95%)`
+    };
+}
+
 /**
  * 배당소득 Gross-up 계산 (2025년 기준)
  * 
@@ -716,7 +750,7 @@ function calculateTaxCredit(deductionType) {
 }
 
 // 단일 케이스 세금 계산
-function calculateSingleCase(salary, dividend, familyCount, deductionType) {
+function calculateSingleCase(salary, dividend, familyCount, deductionType, incomeOtherThanWagesForInsurance) {
     const result = {};
     
     console.log(`=== 세금 계산 시작 ===`);
@@ -736,8 +770,19 @@ function calculateSingleCase(salary, dividend, familyCount, deductionType) {
     result.socialInsurance = socialInsuranceDetail.total;
     result.socialInsuranceExplanation = socialInsuranceDetail.explanation;
     result.socialInsuranceBreakdown = socialInsuranceDetail.breakdown;
+
+    // 직장가입자 소득월액보험료: 보수 외 소득(배당·기타소득 등) 2천만원 초과분에 대한 건강보험료 추가 (국민연금·고용·산재는 급여만 기준)
+    const otherIncomeForInsurance = incomeOtherThanWagesForInsurance !== undefined ? incomeOtherThanWagesForInsurance : dividend;
+    const incomeBasedHealthDetail = calculateIncomeBasedHealthInsurance(otherIncomeForInsurance);
+    result.incomeBasedHealthInsurance = incomeBasedHealthDetail.amount;
+    result.incomeBasedHealthInsuranceExplanation = incomeBasedHealthDetail.explanation;
+    result.socialInsurance += result.incomeBasedHealthInsurance;
+    if (result.incomeBasedHealthInsurance > 0) {
+        result.socialInsuranceExplanation += ' + 소득월액보험료(보수 외 소득 초과분): ' + result.incomeBasedHealthInsuranceExplanation;
+        result.socialInsuranceBreakdown += `, 소득월액보험료: ${formatCurrency(result.incomeBasedHealthInsurance)}`;
+    }
     
-    console.log(`4대보험료: ${formatCurrency(result.socialInsurance)}`);
+    console.log(`4대보험료(급여기준+소득월액): ${formatCurrency(result.socialInsurance)}`);
     
     // 2. 배당소득 계산
     result.dividendIncome = dividend;
@@ -1302,57 +1347,66 @@ function restrictToNumbers(e) {
 
 // 이벤트 리스너 등록
 document.addEventListener('DOMContentLoaded', function() {
-    // 기본값 설정
-    setDefaultValues();
-    
-    // 총처분 가능 금액 입력 필드 이벤트 리스너
+    // corporate-income 페이지에서만 실행 (해당 요소가 있을 때)
     const totalAmountInput = document.getElementById('total-amount');
+    if (totalAmountInput) {
+        // 기본값 설정
+        setDefaultValues();
     
     function handleTotalAmountChange() {
         formatCurrencyInput(totalAmountInput);
         updateAllCasesFromTotal();
     }
     
-    totalAmountInput.addEventListener('input', handleTotalAmountChange);
-    totalAmountInput.addEventListener('paste', function(e) {
-        setTimeout(handleTotalAmountChange, 0);
-    });
-    totalAmountInput.addEventListener('blur', handleTotalAmountChange);
-    totalAmountInput.addEventListener('keydown', restrictToNumbers);
-    
-    // 케이스별 급여액/배당액 입력 필드 이벤트 리스너
-    for (let i = 1; i <= 5; i++) {
-        const salaryInput = document.getElementById(`case${i}-salary`);
-        const dividendInput = document.getElementById(`case${i}-dividend`);
+        totalAmountInput.addEventListener('input', handleTotalAmountChange);
+        totalAmountInput.addEventListener('paste', function(e) {
+            setTimeout(handleTotalAmountChange, 0);
+        });
+        totalAmountInput.addEventListener('blur', handleTotalAmountChange);
+        totalAmountInput.addEventListener('keydown', restrictToNumbers);
         
-        function handleSalaryChange() {
-            formatCurrencyInput(salaryInput);
-            updateCaseAmounts(i, 'salary');
+        // 케이스별 급여액/배당액 입력 필드 이벤트 리스너
+        for (let i = 1; i <= 5; i++) {
+            const salaryInput = document.getElementById(`case${i}-salary`);
+            const dividendInput = document.getElementById(`case${i}-dividend`);
+            
+            if (salaryInput && dividendInput) {
+                function handleSalaryChange() {
+                    formatCurrencyInput(salaryInput);
+                    updateCaseAmounts(i, 'salary');
+                }
+                
+                function handleDividendChange() {
+                    formatCurrencyInput(dividendInput);
+                    updateCaseAmounts(i, 'dividend');
+                }
+                
+                salaryInput.addEventListener('input', handleSalaryChange);
+                salaryInput.addEventListener('paste', function(e) {
+                    setTimeout(handleSalaryChange, 0);
+                });
+                salaryInput.addEventListener('blur', handleSalaryChange);
+                salaryInput.addEventListener('keydown', restrictToNumbers);
+                
+                dividendInput.addEventListener('input', handleDividendChange);
+                dividendInput.addEventListener('paste', function(e) {
+                    setTimeout(handleDividendChange, 0);
+                });
+                dividendInput.addEventListener('blur', handleDividendChange);
+                dividendInput.addEventListener('keydown', restrictToNumbers);
+            }
         }
         
-        function handleDividendChange() {
-            formatCurrencyInput(dividendInput);
-            updateCaseAmounts(i, 'dividend');
-        }
+        // 초기 총 금액 계산
+        updateAllCaseTotals();
         
-        // 급여액 이벤트
-        salaryInput.addEventListener('input', handleSalaryChange);
-        salaryInput.addEventListener('paste', function(e) {
-            setTimeout(handleSalaryChange, 0);
-        });
-        salaryInput.addEventListener('blur', handleSalaryChange);
-        salaryInput.addEventListener('keydown', restrictToNumbers);
+        // 본인 지분율 입력 필드 초기 설정
+        setupEquityInputFocus(document.getElementById('equity-main'));
         
-        // 배당액 이벤트
-        dividendInput.addEventListener('input', handleDividendChange);
-        dividendInput.addEventListener('paste', function(e) {
-            setTimeout(handleDividendChange, 0);
-        });
-        dividendInput.addEventListener('blur', handleDividendChange);
-        dividendInput.addEventListener('keydown', restrictToNumbers);
+        console.log('지분율 입력 필드 초기화 완료');
     }
     
-    // 기타 currency-input 필드들 (총처분 가능 금액과 케이스별 필드 제외)
+    // 기타 currency-input 필드들 (총처분 가능 금액과 케이스별 필드 제외) - 모든 페이지
     const otherCurrencyInputs = document.querySelectorAll('.currency-input:not(#total-amount):not([id^="case"])');
     
     otherCurrencyInputs.forEach(input => {
@@ -1372,22 +1426,18 @@ document.addEventListener('DOMContentLoaded', function() {
             formatCurrencyInput(e.target);
         });
     });
-    
-    // 초기 총 금액 계산
-    updateAllCaseTotals();
-    
-    // 본인 지분율 입력 필드 초기 설정
-    setupEquityInputFocus(document.getElementById('equity-main'));
-    
-    console.log('지분율 입력 필드 초기화 완료');
 });
 
 // 엔터키로 계산 실행
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
         const focusedElement = document.activeElement;
-        if (focusedElement.tagName === 'INPUT') {
-            calculateTaxEffect();
+        if (focusedElement && focusedElement.tagName === 'INPUT') {
+            if (document.getElementById('business-income') && typeof calculateConversionEffect === 'function') {
+                calculateConversionEffect();
+            } else if (document.getElementById('case1-salary') && typeof calculateTaxEffect === 'function') {
+                calculateTaxEffect();
+            }
         }
     }
 });
@@ -1797,6 +1847,10 @@ function calculateAdditionalPersonCase(salary, dividend) {
     
     const socialInsuranceDetail = calculateSocialInsurance(salary);
     result.socialInsurance = socialInsuranceDetail.total;
+
+    // 직장가입자 소득월액보험료: 배당 2천만원 초과분에 대한 건강보험료 추가
+    const incomeBasedHealthDetail = calculateIncomeBasedHealthInsurance(dividend);
+    result.socialInsurance += incomeBasedHealthDetail.amount;
     
     // 2. 배당소득 계산
     result.dividendIncome = dividend;
